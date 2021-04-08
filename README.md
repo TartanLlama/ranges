@@ -23,11 +23,10 @@ Tested on:
 - Visual Studio 2019 version 16.9
 - GCC 10.2
 
-## Future work
+## Next up
 
-- `istream_range`
-- `cartesian_product`
 - `cycle`
+- `cartesian_product`
 
 ----------
 
