@@ -90,9 +90,8 @@ if (RANGES_BUILD_TESTS)
     ${PROJECT_BINARY_DIR}/catch.main.cpp)
   target_compile_options(${PROJECT_NAME}-catch-main
     PUBLIC
-      $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:"$ENV{TRAVIS}">>:-stdlib=libstdc++>
-      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
-      $<$<CXX_COMPILER_ID:GNU>:-fcoroutines>)
+      $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:"$ENV{TRAVIS}">>:-stdlib=libc++>
+      $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>)
   target_link_options(${PROJECT_NAME}-catch-main
     PUBLIC
       $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:"$ENV{TRAVIS}">>:-stdlib=libc++>)
