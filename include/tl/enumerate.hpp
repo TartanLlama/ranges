@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TL_RANGES_ENUMERATE_HPP
+#define TL_RANGES_ENUMERATE_HPP
 
 #include <iterator>
 #include <ranges>
@@ -271,3 +272,5 @@ namespace tl {
       inline constexpr detail::enumerate_fn enumerate;
    }  // namespace views
 }  // namespace tl
+
+#endif
