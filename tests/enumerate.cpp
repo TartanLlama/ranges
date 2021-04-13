@@ -96,6 +96,9 @@ struct iota_view
    constexpr auto end() { return sentinel{}; }
 };
 
+template<>
+constexpr bool std::ranges::enable_borrowed_range<iota_view> = true;
+
 TEST_CASE("unsized view") {
    for (auto&& [i, j] : (iota_view{} | tl::views::enumerate | std::views::take(10))) {
       REQUIRE(i == j);
