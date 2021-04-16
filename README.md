@@ -27,6 +27,7 @@ Tested on:
 
 - `cycle`
 - `cartesian_product`
+- `chunk`
 
 ----------
 
