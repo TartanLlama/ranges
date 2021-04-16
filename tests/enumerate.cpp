@@ -1,3 +1,4 @@
+
 #include "tl/enumerate.hpp"
 #include <catch2/catch.hpp>
 #include <iostream>
@@ -64,7 +65,6 @@ struct iota_view
       using value_type = std::size_t;
       using difference_type = std::ptrdiff_t;
 
-      iterator() = default;
       constexpr decltype(auto) operator*() const {
          return pos_;
       }
@@ -74,9 +74,9 @@ struct iota_view
          return *this;
       }
 
-      constexpr iterator operator++(int) {
+      constexpr iterator operator++(int) const {
          auto temp = *this;
-         ++pos_;
+         ++temp.pos_;
          return temp;
       }
 
@@ -93,8 +93,11 @@ struct iota_view
    constexpr auto begin() {
       return iterator{};
    }
-   constexpr auto end() { return sentinel{}; }
+   constexpr auto end() const { return sentinel{}; }
 };
+
+template<>
+constexpr bool std::ranges::enable_borrowed_range<iota_view> = true;
 
 TEST_CASE("unsized view") {
    for (auto&& [i, j] : (iota_view{} | tl::views::enumerate | std::views::take(10))) {
