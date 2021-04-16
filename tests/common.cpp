@@ -12,6 +12,6 @@ TEST_CASE("common_iterator_category") {
    STATIC_REQUIRE(b);
    constexpr bool c = std::is_same_v<tl::common_iterator_category<std::ranges::ref_view<std::vector<int>>, std::ranges::ref_view<std::forward_list<double>>>, std::forward_iterator_tag>;
    STATIC_REQUIRE(c);
-   constexpr bool d = std::is_same_v<tl::common_iterator_category<std::ranges::ref_view<std::vector<int>>, std::views::all_t<std::ranges::basic_istream_view<double, char>>>, std::input_iterator_tag>;
+   constexpr bool d = std::is_same_v<tl::common_iterator_category<std::ranges::ref_view<std::vector<int>>, std::views::all_t<std::ranges::basic_istream_view<double, char, std::char_traits<char>>>>, std::input_iterator_tag>;
    STATIC_REQUIRE(d);
 }
