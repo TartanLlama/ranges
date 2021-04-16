@@ -17,6 +17,36 @@ for (auto&& [index, item] : tl::views::enumerate(v)) {
 }
 ```
 
+### `tl::cycle_view`/`tl::views::cycle`
+
+Turns a view into an infinitely cycling one.
+
+```cpp
+std::vector<int> v { 0, 1, 2 };
+for (auto&& item : tl::views::cycle(v)) {
+  std::cout << item << ' '; 
+  //0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0...
+}
+```
+
+### `tl::cartesian_product_view`/`tl::views::cartesian_product`
+
+A view representing the [cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) of any number of other views.
+
+```cpp
+std::vector<int> v { 0, 1, 2 };
+for (auto&& [a,b,c] : tl::views::cartesian_product(v, v, v)) {
+  std::cout << a << ' ' << b << ' ' << c << '\n';
+  //0 0 0
+  //0 0 1
+  //0 0 2
+  //0 1 0
+  //0 1 1
+  //...
+}
+```
+ 
+
 ## Compiler Support
 
 Tested on:
@@ -25,8 +55,6 @@ Tested on:
 
 ## Next up
 
-- `cycle`
-- `cartesian_product`
 - `chunk`
 
 ----------
