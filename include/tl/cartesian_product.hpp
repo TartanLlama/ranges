@@ -103,7 +103,6 @@ namespace tl {
             }
             else {
                //If we're the 0th iterator, then cycling should set the iterator to the end
-               //If we're the 0th iterator, then cycling should set the iterator to the end
                if (times_cycled > 0) {
                   std::ranges::advance(it, end);
                }
