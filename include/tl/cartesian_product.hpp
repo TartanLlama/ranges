@@ -198,7 +198,7 @@ namespace tl {
             return x.currents_ >= y.currents_;
          }
          friend constexpr auto operator<=>(const iterator& x,
-            const iterator& y) requires ((std::ranges::random_access_range<constify<Vs>>&& std::ranges::random_access_range<constify<Vs>>) && ...) {
+            const iterator& y) requires ((std::ranges::random_access_range<constify<Vs>>&& std::three_way_comparable<constify<Vs>>) && ...) {
             return x.currents_ <=> y.currents_;
          }
 
@@ -208,7 +208,7 @@ namespace tl {
 
    public:
       cartesian_product_view() = default;
-      cartesian_product_view(Vs... bases) : bases_(std::move(bases)...) {}
+      explicit cartesian_product_view(Vs... bases) : bases_(std::move(bases)...) {}
 
       constexpr auto begin() requires (!simple_view<Vs> || ...) {
          return std::apply([this](auto&&... bases) { return iterator<false>(std::addressof(bases_), std::ranges::begin(bases)...); }, bases_);
@@ -244,9 +244,13 @@ namespace tl {
          namespace detail {
             class cartesian_product_fn {
             public:
+               constexpr std::ranges::empty_view<std::tuple<>> operator()() const {
+                  return {};
+               }
                template <std::ranges::viewable_range... V>
+               requires (sizeof...(V) != 0)
                constexpr auto operator()(V&&... vs) const {
-                  return tl::cartesian_product_view{ std::forward<V>(vs)... };
+                  return tl::cartesian_product_view{ std::views::all(std::forward<V>(vs))... };
                }
             };
          }  // namespace detail
