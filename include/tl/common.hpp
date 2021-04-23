@@ -29,6 +29,11 @@ namespace tl {
       std::same_as<std::ranges::iterator_t<R>, std::ranges::iterator_t<const R>> &&
       std::same_as<std::ranges::sentinel_t<R>,
       std::ranges::sentinel_t<const R>>;
+
+   struct begin_tag_t {};
+   constexpr inline begin_tag_t begin_tag;
+   struct end_tag_t {};
+   constexpr inline end_tag_t end_tag;
 }
 
 #endif

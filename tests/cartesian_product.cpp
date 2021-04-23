@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
+#include <forward_list>
 
 TEST_CASE("cartesian") {
    std::vector a{ 0,1,2 };
@@ -107,4 +108,31 @@ TEST_CASE("random access") {
    REQUIRE(*it == std::make_tuple(2, 0, 2));
    it += 7;
    REQUIRE(it == v.end());
+}
+
+TEST_CASE("common") {
+   std::vector<int> a{ 0,1,2 };
+   std::list<int> b{ 0,1,2 };
+   std::forward_list<int> c{ 0,1,2 };
+
+
+   auto av = tl::views::cartesian_product(a);
+   STATIC_REQUIRE(std::ranges::common_range<decltype(av)>);
+
+   {
+      auto abcv = tl::views::cartesian_product(a, b, c);
+      STATIC_REQUIRE(std::ranges::common_range<decltype(abcv)>);
+      auto begin = std::ranges::begin(abcv);
+      std::ranges::advance(begin, std::ranges::end(abcv));
+      REQUIRE(begin == std::ranges::end(abcv));
+   }
+
+   {
+      auto abv = tl::views::cartesian_product(a, b);
+      STATIC_REQUIRE(std::ranges::common_range<decltype(abv)>);
+      auto begin = std::ranges::begin(abv);
+      std::ranges::advance(begin, std::ranges::end(abv));
+      REQUIRE(begin == std::ranges::end(abv));
+      REQUIRE(--begin == --std::ranges::end(abv));
+   }
 }
