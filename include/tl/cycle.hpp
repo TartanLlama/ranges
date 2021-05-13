@@ -19,7 +19,7 @@ namespace tl {
 
          std::ranges::iterator_t<Base> current_{};
          Base* base_ = nullptr;
-
+ 
       public:
          using iterator_category = typename std::iterator_traits<
             std::ranges::iterator_t<Base>>::iterator_category;

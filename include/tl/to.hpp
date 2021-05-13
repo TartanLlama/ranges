@@ -7,9 +7,15 @@
 
 namespace tl {
    namespace detail {
+      template <class C, class R>
+      concept reservable = std::ranges::sized_range<R> && requires(C & c, R && rng) {
+         { c.capacity() } -> std::same_as<std::ranges::range_size_t<C>>;
+         { c.reserve(std::ranges::range_size_t<R>(0)) };
+      };
+
       template <class C>
-      concept reservable = std::ranges::input_range<C> && !std::ranges::view<C> && requires (C c, std::ranges::range_size_t<C> s) {
-         c.reserve(s);
+      concept insertable = requires(C c) {
+         std::inserter(c, std::ranges::end(c));
       };
 
       template <class>
@@ -24,7 +30,8 @@ namespace tl {
          std::indirectly_copyable<
          std::ranges::iterator_t<std::ranges::range_value_t<R>>,
          std::ranges::iterator_t<std::ranges::range_value_t<C>>
-         >;
+         > &&
+         detail::insertable<C>;
 
       template <std::ranges::input_range R>
       struct fake_input_iterator {
@@ -40,28 +47,16 @@ namespace tl {
          friend bool operator==(fake_input_iterator a, fake_input_iterator b);
       };
 
-      template <template <class...> class C, class R, class... Args>
-      concept construct_container_from = requires (R r, Args... args) {
-         C(std::forward<R>(r), std::forward<Args>(args)...);
-      };
-
-      template <template <class...> class C, class R, class... Args>
-      concept construct_container_from_iterators = requires (Args... args, fake_input_iterator<R> i) {
-         C(i, i, std::forward<Args>(args)...);
-      };
       template <template <typename...> typename C, std::ranges::input_range R, typename... Args>
-      auto ctad_container() {
-         if constexpr (construct_container_from<C, R, Args...>) {
-            return decltype(C(std::declval<R>(), std::declval<Args>()...)){};
-         }
-         else if constexpr (construct_container_from_iterators<C, R, Args...>) {
-            using iter = fake_input_iterator<R>;
-            return decltype(C(std::declval<iter>(), std::declval<iter>(), std::declval<Args>()...)){};
-         }
-         else {
-            static_assert(detail::always_false<R>, "C is not constructible from R");
-         }
-      }
+      struct ctad_container {
+         template <class V = R>
+         static auto deduce(int) -> decltype(C(std::declval<V>(), std::declval<Args>()...));
+
+         template <class Iter = fake_input_iterator<R>>
+         static auto deduce(...) -> decltype(C(std::declval<Iter>(), std::declval<Iter>(), std::declval<Args>()...));
+
+         using type = decltype(deduce(0));
+      };
    }
 
    template <std::ranges::input_range C, std::ranges::input_range R, typename... Args>
@@ -72,17 +67,20 @@ namespace tl {
          return C(std::forward<R>(r), std::forward<Args>(args)...);
       }
       //Construct and copy (potentially reserving memory)
-      else if constexpr (std::constructible_from<C, Args...> && std::indirectly_copyable<std::ranges::iterator_t<R>, std::ranges::iterator_t<C>>) {
+      else if constexpr (std::constructible_from<C, Args...> && std::indirectly_copyable<std::ranges::iterator_t<R>, std::ranges::iterator_t<C>> && detail::insertable<C>) {
          C c(std::forward<Args>(args)...);
-         if constexpr (std::ranges::sized_range<R> && detail::reservable<C>) {
+         if constexpr (std::ranges::sized_range<R> && detail::reservable<C, R>) {
             c.reserve(std::ranges::size(r));
          }
-         std::ranges::copy(std::forward<R>(r), std::inserter(c, std::end(c)));
+         std::ranges::copy(r, std::inserter(c, std::end(c)));
          return c;
       }
       //Nested case
       else if constexpr (detail::matroshkable<C, R>) {
          C c(std::forward<Args...>(args)...);
+         if constexpr (std::ranges::sized_range<R> && detail::reservable<C, R>) {
+            c.reserve(std::ranges::size(r));
+         }
          auto v = r | std::views::transform([](auto&& elem) {
             return tl::to<std::ranges::range_value_t<C>>(elem);
             });
@@ -98,7 +96,7 @@ namespace tl {
       }
    }
 
-   template <template <typename...> typename C, std::ranges::input_range R, typename... Args, class ContainerType = decltype(detail::ctad_container<C, R, Args...>())>
+   template <template <typename...> typename C, std::ranges::input_range R, typename... Args, class ContainerType = detail::ctad_container<C, R, Args...>::type>
    constexpr auto to(R&& r, Args&&... args) -> ContainerType {
       return tl::to<ContainerType>(std::forward<R>(r), std::forward<Args>(args)...);
    }
@@ -113,7 +111,7 @@ namespace tl {
       template <std::ranges::input_range R, std::ranges::input_range C, class... Args>
       auto constexpr operator| (R&& r, closure_range<C, Args...>&& c) {
          return std::apply([&r](auto&&... inner_args) {
-            return tl::to<C>(std::forward<R>(r));
+            return tl::to<C>(std::forward<R>(r), std::forward<decltype(inner_args)>(inner_args)...);
             }, std::move(c.args_));
       }
       template <template <class...> class C, class... Args>

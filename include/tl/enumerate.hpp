@@ -206,7 +206,7 @@ namespace tl {
       constexpr auto begin() requires(!simple_view<V>) {
          return iterator<false>(std::ranges::begin(base_), 0);
       }
-      constexpr auto begin() const requires simple_view<V> {
+      constexpr auto begin() const requires std::ranges::range<const V> {
          return iterator<true>(std::ranges::begin(base_), 0);
       }
 

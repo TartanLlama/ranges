@@ -19,6 +19,9 @@ namespace tl {
       std::tuple<Vs...> bases_;
 
       template <bool Const>
+      class sentinel;
+
+      template <bool Const>
       class iterator {
          template<class T>
          using constify = std::conditional_t<Const, const T, T>;
@@ -154,33 +157,33 @@ namespace tl {
          }
 
          constexpr iterator& operator+=(
-            difference_type x) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            difference_type x) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             advance(x);
             return *this;
          }
          constexpr iterator& operator-=(
-            difference_type x) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            difference_type x) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             this->operator+=(-x);
             return *this;
          }
          constexpr decltype(auto) operator[](difference_type n) const
-            requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             return *((*this) + n);
          }
 
          friend constexpr iterator operator+(
             const iterator& x,
-            difference_type y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            difference_type y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             return iterator{ x } += y;
          }
          friend constexpr iterator operator+(
             difference_type x,
-            const iterator& y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            const iterator& y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             return y + x;
          }
          friend constexpr iterator operator-(
             const iterator& x,
-            difference_type y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
+            difference_type y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
             return iterator{ x } -= y;
          }
 
@@ -188,11 +191,6 @@ namespace tl {
             const iterator& y) requires (std::
                equality_comparable < std::ranges::iterator_t<constify<Vs>>> && ...) {
             return x.currents_ == y.currents_;
-         }
-
-         friend constexpr bool operator==(const iterator& x,
-            const std::default_sentinel_t&) {
-            return std::get<0>(x.currents_) == std::ranges::end(std::get<0>(*x.bases_));
          }
 
          friend constexpr auto operator<(
@@ -220,8 +218,29 @@ namespace tl {
             return x.currents_ <=> y.currents_;
          }
 
+         template <bool>
          friend class sentinel;
          friend class iterator<!Const>;
+      };
+
+      template <bool Const>
+      class sentinel {
+         using parent = std::conditional_t<Const, const cartesian_product_view, cartesian_product_view>;
+         using first_base = decltype(get<0>(std::declval<parent>().bases_));
+         std::ranges::sentinel_t<first_base> end_;
+
+      public:
+         sentinel() = default;
+         sentinel(std::ranges::sentinel_t<first_base> end) : end_(std::move(end)) {}
+
+         friend constexpr bool operator==(sentinel const& s, std::ranges::iterator_t<parent> const& it) {
+            return get<0>(it.current_) == s.end_;
+         }
+
+         constexpr sentinel(sentinel<!Const> other) requires Const &&
+            (std::convertible_to<std::ranges::sentinel_t<first_base>, std::ranges::sentinel_t<const first_base>>)
+            : end_(std::move(other.end_)){
+         }
       };
 
    public:
@@ -239,19 +258,23 @@ namespace tl {
          return iterator<false>(end_tag, std::addressof(bases_));
       }
 
-      constexpr auto end() const requires (detail::cartesian_product_is_common<Vs...>) {
+      constexpr auto end() const requires (detail::cartesian_product_is_common<const Vs...>) {
          return iterator<true>(end_tag, std::addressof(bases_));
       }
 
-      constexpr auto end() const {
-         return std::default_sentinel;
+      constexpr auto end() requires(!(simple_view<Vs> && ...) && !detail::cartesian_product_is_common<Vs...>) {
+         return sentinel<false>(std::ranges::end(std::get<0>(bases_)));
+      }
+
+      constexpr auto end() const requires ((std::ranges::range<const Vs> && ...) && !detail::cartesian_product_is_common<const Vs...>){
+         return sentinel<true>(std::ranges::end(std::get<0>(bases_)));
       }
 
       constexpr auto size() requires (std::ranges::sized_range<Vs> && ...) {
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;
             return (static_cast<size_type>(std::ranges::size(bases)) * ...);
-            });
+            }, bases_);
       }
 
       constexpr auto size() const requires (std::ranges::sized_range<const Vs> && ...) {
@@ -259,7 +282,7 @@ namespace tl {
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;
             return (static_cast<size_type>(std::ranges::size(bases)) * ...);
-            });
+            }, bases_);
       }
    };
 
