@@ -96,7 +96,7 @@ namespace tl {
       }
    }
 
-   template <template <typename...> typename C, std::ranges::input_range R, typename... Args, class ContainerType = detail::ctad_container<C, R, Args...>::type>
+   template <template <typename...> typename C, std::ranges::input_range R, typename... Args, class ContainerType = typename detail::ctad_container<C, R, Args...>::type>
    constexpr auto to(R&& r, Args&&... args) -> ContainerType {
       return tl::to<ContainerType>(std::forward<R>(r), std::forward<Args>(args)...);
    }
