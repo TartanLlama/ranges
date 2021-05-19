@@ -8,14 +8,25 @@
 #include "common.hpp"
 
 namespace tl {
-   namespace detail {
-      template <class... Vs>
-      concept cartesian_product_is_common = (std::ranges::common_range<Vs> && ...)
-         || ((std::ranges::random_access_range<Vs> && ...) && (std::ranges::sized_range<Vs> && ...));
-   }
    template <std::ranges::forward_range... Vs>
    requires (std::ranges::view<Vs> && ...) class cartesian_product_view
       : public std::ranges::view_interface<cartesian_product_view<Vs...>> {
+      template <class... Ts>
+      static constexpr bool am_common = (std::ranges::common_range<Ts> && ...)
+         || ((std::ranges::random_access_range<Ts> && ...) && (std::ranges::sized_range<Ts> && ...));
+
+      template <class... Ts>
+      static constexpr bool am_sized = (std::ranges::sized_range<Ts> && ...);
+
+      template <class... Ts>
+      static constexpr bool am_bidirectional =
+         ((std::ranges::bidirectional_range<Ts> && ...) && (std::ranges::common_range<Ts> && ...));
+
+      template <class... Ts>
+      static constexpr bool am_random_access =
+         ((std::ranges::random_access_range<Ts> && ...) &&
+            (std::ranges::sized_range<Ts> && ...));
+
       std::tuple<Vs...> bases_;
 
       template <bool Const>
@@ -145,45 +156,45 @@ namespace tl {
          }
 
          constexpr iterator&
-            operator--() requires (std::ranges::bidirectional_range<constify<Vs>> && ...) {
+            operator--() requires (am_bidirectional<constify<Vs>...>) {
             prev();
             return *this;
          }
          constexpr iterator operator--(
-            int) requires (std::ranges::bidirectional_range<constify<Vs>> && ...) {
+            int) requires (am_bidirectional<constify<Vs>...>) {
             auto temp = *this;
             prev();
             return temp;
          }
 
          constexpr iterator& operator+=(
-            difference_type x) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            difference_type x) requires (am_random_access<constify<Vs>...>) {
             advance(x);
             return *this;
          }
          constexpr iterator& operator-=(
-            difference_type x) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            difference_type x) requires (am_random_access<constify<Vs>...>) {
             this->operator+=(-x);
             return *this;
          }
          constexpr decltype(auto) operator[](difference_type n) const
-            requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            requires (am_random_access<constify<Vs>...>) {
             return *((*this) + n);
          }
 
          friend constexpr iterator operator+(
             const iterator& x,
-            difference_type y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            difference_type y) requires (am_random_access<constify<Vs>...>) {
             return iterator{ x } += y;
          }
          friend constexpr iterator operator+(
             difference_type x,
-            const iterator& y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            const iterator& y) requires (am_random_access<constify<Vs>...>) {
             return y + x;
          }
          friend constexpr iterator operator-(
             const iterator& x,
-            difference_type y) requires ((std::ranges::random_access_range<constify<Vs>> && ...) && (std::ranges::sized_range<constify<Vs>> && ...)) {
+            difference_type y) requires (am_random_access<constify<Vs>...>) {
             return iterator{ x } -= y;
          }
 
@@ -254,30 +265,30 @@ namespace tl {
          return iterator<true>(begin_tag, std::addressof(bases_));
       }
 
-      constexpr auto end() requires (!(simple_view<Vs> && ...) && detail::cartesian_product_is_common<Vs...>) {
+      constexpr auto end() requires (!(simple_view<Vs> && ...) && am_common<Vs...>) {
          return iterator<false>(end_tag, std::addressof(bases_));
       }
 
-      constexpr auto end() const requires (detail::cartesian_product_is_common<const Vs...>) {
+      constexpr auto end() const requires (am_common<const Vs...>) {
          return iterator<true>(end_tag, std::addressof(bases_));
       }
 
-      constexpr auto end() requires(!(simple_view<Vs> && ...) && !detail::cartesian_product_is_common<Vs...>) {
+      constexpr auto end() requires(!(simple_view<Vs> && ...) && !am_common<Vs...>) {
          return sentinel<false>(std::ranges::end(std::get<0>(bases_)));
       }
 
-      constexpr auto end() const requires ((std::ranges::range<const Vs> && ...) && !detail::cartesian_product_is_common<const Vs...>){
+      constexpr auto end() const requires ((std::ranges::range<const Vs> && ...) && !am_common<const Vs...>){
          return sentinel<true>(std::ranges::end(std::get<0>(bases_)));
       }
 
-      constexpr auto size() requires (std::ranges::sized_range<Vs> && ...) {
+      constexpr auto size() requires (am_sized<Vs...>) {
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;
             return (static_cast<size_type>(std::ranges::size(bases)) * ...);
             }, bases_);
       }
 
-      constexpr auto size() const requires (std::ranges::sized_range<const Vs> && ...) {
+      constexpr auto size() const requires (am_sized<const Vs...>) {
          //Multiply all the sizes together, returning the common type of all of them
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;

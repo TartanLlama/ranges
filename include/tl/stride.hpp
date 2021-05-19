@@ -7,20 +7,21 @@
 #include "common.hpp"
 
 namespace tl {
-   namespace detail {
-      //Stride view can be common if the underlying range is not bidirectional, 
-      //but if it is bidirectional then it is required to be sized because
-      //working out where to go when you decrement the end iterator requires computing 
-      //the offset.
-      template <class V>
-      concept stride_view_is_common = std::ranges::common_range<V> &&
-         (!std::ranges::bidirectional_range<V> || std::ranges::sized_range<V>);
-   }
    template <std::ranges::input_range V>
    requires std::ranges::view<V> class stride_view
       : public std::ranges::view_interface<stride_view<V>> {
       V base_;
       std::ranges::range_difference_t<V> stride_;
+
+      //Stride view can be common if the underlying range is not bidirectional, 
+      //but if it is bidirectional then it is required to be sized because
+      //working out where to go when you decrement the end iterator requires computing 
+      //the offset.
+      template <class T>
+      static constexpr bool am_common = std::ranges::common_range<T> &&
+         (!std::ranges::bidirectional_range<T> || std::ranges::sized_range<T>);
+
+      template <class T> static constexpr bool am_sized = std::ranges::sized_range<T>;
 
       template <bool Const>
       class sentinel;
@@ -261,27 +262,27 @@ namespace tl {
          return iterator<true>(std::ranges::begin(base_), stride_, std::addressof(base_));
       }
 
-      constexpr auto end() requires (!simple_view<V> && detail::stride_view_is_common<V>) {
+      constexpr auto end() requires (!simple_view<V> && am_common<V>) {
          return iterator<false>(std::ranges::end(base_), stride_, std::addressof(base_));
       }
 
-      constexpr auto end() const requires (std::ranges::range<const V>&& detail::stride_view_is_common<const V>) {
+      constexpr auto end() const requires (std::ranges::range<const V>&& am_common<const V>) {
          return iterator<true>(std::ranges::end(base_), stride_, std::addressof(base_));
       }
 
-      constexpr auto end() requires (!simple_view<V> && !detail::stride_view_is_common<V>) {
-         return sentinel<false>(std::ranges::end(base_), stride_, std::addressof(base_));
+      constexpr auto end() requires (!simple_view<V> && !am_common<V>) {
+         return sentinel<false>(std::ranges::end(base_));
       }
 
-      constexpr auto end() const requires (std::ranges::range<const V> && !detail::stride_view_is_common<const V>) {
-         return sentinel<true>(std::ranges::end(base_), stride_, std::addressof(base_));
+      constexpr auto end() const requires (std::ranges::range<const V> && !am_common<const V>) {
+         return sentinel<true>(std::ranges::end(base_));
       }
 
-      constexpr auto size() requires (std::ranges::sized_range<V>) {
+      constexpr auto size() requires (am_sized<V>) {
          return (std::ranges::size(base_) + stride_ - 1) / stride_;
       }
 
-      constexpr auto size() const requires (std::ranges::sized_range<const V>) {
+      constexpr auto size() const requires (am_sized<const V>) {
          return (std::ranges::size(base_) + stride_ - 1) / stride_;
       }
 
