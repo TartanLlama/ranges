@@ -8,7 +8,7 @@ Implementations of ranges that didn't make C++20. Coded live [on Twitch](https:/
 ## Types
 
 
-### `tl::cartesian_product_view`/`tl::views::cartesian_product`
+### `tl::cartesian_product_view`
 
 A view representing the [cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) of any number of other views.
 
@@ -25,7 +25,26 @@ for (auto&& [a,b,c] : tl::views::cartesian_product(v, v, v)) {
 }
 ```
 
-### `tl::chunk_by_view`/`tl::views::chunk_by`
+### `tl::chunk_view`
+
+A view which chunks a range into subranges of the given size.
+
+```cpp
+std::vector<int> vec { 0,1,2,3,4,5,6,7,8,9,10 };
+
+for (auto&& group : vec | tl::views::chunk(4)) {
+    std::cout << "Group: ";
+    for (auto&& e : group) {
+      std::cout << e << ' ';
+    }
+    std::cout << '\n';
+}
+//Group: 0 1 2 3
+//Group: 4 5 6 7
+//Group: 8 9 10
+```
+
+### `tl::chunk_by_view`
 
 A view which chunks a range into subranges where the consecutive elements satisfy a binary predicate.
 
@@ -50,7 +69,7 @@ for (auto&& group : cats | tl::views::chunk_by([](auto&& left, auto&& right) { r
 }
 ```
 
-### `tl::chunk_by_key_view`/`tl::views::chunk_by_key`
+### `tl::chunk_by_key_view`
 
 A view which chunks a range into subranges where the consecutive elements share the same key given by a projection function.
 
@@ -75,7 +94,7 @@ for (auto&& group : cats | tl::views::chunk_by_key([](auto&& c) { return c.age; 
 }
 ```
 
-### `tl::cycle_view`/`tl::views::cycle`
+### `tl::cycle_view`
 
 Turns a view into an infinitely cycling one.
 
@@ -87,7 +106,7 @@ for (auto&& item : tl::views::cycle(v)) {
 }
 ```
 
-### `tl::enumerate_view`/`tl::views::enumerate`
+### `tl::enumerate_view`
 
 A view which lets you iterate over the items in a range and their indices at the same time.
 
@@ -139,7 +158,21 @@ auto vec1 = tl::to<std::vector<std::vector<int>>>(lst);
 auto vec2 = tl::to<std::vector<std::deque<double>>>(lst); 
 ```
 
-### `tl::stride_view`/`tl::views::stride`
+### `tl::transform_maybe_view`
+
+Takes a function from `range_reference_t<Range>` to `optional<U>`. Transforms the given range by calling the function on each element, but only returning the value of engaged optionals.
+
+```cpp
+std::vector<int> vec{ 0,1,2,3,4 };
+auto f = [](auto i) { return (i % 2 == 0) ? std::optional(i / 2) : std::nullopt; };
+
+for (auto&& e : vec | tl::views::transform_maybe(f)) {
+   std::cout << e << ' ';
+   //0 1 2
+}
+```
+
+### `tl::stride_view`
 
 A view which walks over the given range with the given stride size.
 
@@ -157,10 +190,6 @@ for (auto&& e : v | tl::views::stride(3)) {
 Tested on:
 - Visual Studio 2019 version 16.9
 - GCC 10.2
-
-## Next up
-
-- `chunk`
 
 ----------
 
