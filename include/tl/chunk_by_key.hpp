@@ -6,14 +6,17 @@
 #include <utility>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "utility/semiregular_box.hpp"
 
 namespace tl {
    template <std::ranges::forward_range V, std::invocable<std::ranges::range_reference_t<V>> F>
+   requires std::ranges::view<V>
    class chunk_by_key_view 
       : public std::ranges::view_interface<chunk_by_key_view<V,F>> {
    private:
       V base_;
-      F func_;
+      //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
+      [[no_unique_address]] semiregular_box<F> func_;
 
       template <bool Const>
       struct cursor {
@@ -33,8 +36,8 @@ namespace tl {
 
          void find_end_of_current_range() {
             if (current_ != std::ranges::end(parent_->base_)) {
-               current_key_ = std::invoke(parent_->func_, *current_);
-               end_of_current_range_ = std::find_if(current_, std::end(parent_->base_), [this](auto&& v) { return std::invoke(parent_->func_, v) != current_key_; });
+               current_key_ = std::invoke(*parent_->func_, *current_);
+               end_of_current_range_ = std::find_if(current_, std::end(parent_->base_), [this](auto&& v) { return std::invoke(*parent_->func_, v) != current_key_; });
             }
          }
 

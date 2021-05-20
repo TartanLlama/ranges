@@ -78,7 +78,8 @@ namespace tl {
             return current_ == rhs.end();
          }
 
-         constexpr auto distance_to(const cursor& rhs) const requires std::ranges::random_access_range<Base> {
+         constexpr auto distance_to(const cursor& rhs) const 
+            requires std::sized_sentinel_for<std::ranges::iterator_t<Base>, std::ranges::iterator_t<Base>> {
             return rhs.current_ - current_;
          }
 

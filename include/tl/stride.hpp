@@ -11,9 +11,6 @@ namespace tl {
    template <std::ranges::input_range V>
    requires std::ranges::view<V> class stride_view
       : public std::ranges::view_interface<stride_view<V>> {
-      V base_;
-      std::ranges::range_difference_t<V> stride_;
-
       //Stride view can be common if the underlying range is not bidirectional, 
       //but if it is bidirectional then it is required to be sized because
       //working out where to go when you decrement the end iterator requires computing 
@@ -23,6 +20,9 @@ namespace tl {
          (!std::ranges::bidirectional_range<T> || std::ranges::sized_range<T>);
 
       template <class T> static constexpr bool am_sized = std::ranges::sized_range<T>;
+
+      V base_;
+      std::ranges::range_difference_t<V> stride_;
 
       //Case when underlying range is not bidirectional, i.e. we don't care about calculating offsets
       template <bool Const, class Base = std::conditional_t<Const, const V, V>, bool = std::ranges::bidirectional_range<Base>, bool = std::ranges::sized_range<Base>>

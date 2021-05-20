@@ -5,15 +5,16 @@
 #include <concepts>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "utility/semiregular_box.hpp"
 
 namespace tl {
-   template<class >struct TC;
    template <std::ranges::input_range V, std::invocable<std::ranges::range_reference_t<V>> F>
    requires std::ranges::view<V>
    class transform_maybe_view : public std::ranges::view_interface<transform_maybe_view<V,F>> {
    private:
       V base_;
-      F func_;
+      //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
+      [[no_unique_address]] semiregular_box<F> func_;
 
       template <bool Const>
       struct sentinel {
@@ -37,10 +38,10 @@ namespace tl {
          cursor() = default;
          constexpr cursor(begin_tag_t, constify<transform_maybe_view>* parent)
             : current_(std::ranges::begin(parent->base_)), parent_(parent) {
-            auto result = std::invoke(parent_->func_, *current_);
+            auto result = std::invoke(*parent_->func_, *current_);
             while (!result && current_ != std::ranges::end(parent_->base_)) {
                ++current_;
-               result = std::invoke(parent_->func_, *current_);
+               result = std::invoke(*parent_->func_, *current_);
             };
             cache_ = std::move(result);
          }
@@ -62,7 +63,7 @@ namespace tl {
             do {
                ++current_;
                if (current_ == std::ranges::end(parent_->base_)) return;
-               result = std::invoke(parent_->func_, *current_);
+               result = std::invoke(*parent_->func_, *current_);
             } while (!result);
             cache_ = std::move(result);
          }
@@ -81,9 +82,7 @@ namespace tl {
 
       transform_maybe_view() = default;
       transform_maybe_view(V v, F f) : base_(std::move(v)), func_(std::move(f)) {}
-      ~transform_maybe_view() {
 
-      }
       constexpr auto begin() requires(!simple_view<V>) {
          return basic_iterator{ cursor<false>(begin_tag, this) };
       }

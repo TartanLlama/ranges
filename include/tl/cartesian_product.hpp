@@ -7,11 +7,14 @@
 #include <tuple>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "utility/tuple_transform.hpp"
 
 namespace tl {
    template <std::ranges::forward_range... Vs>
    requires (std::ranges::view<Vs> && ...) class cartesian_product_view
       : public std::ranges::view_interface<cartesian_product_view<Vs...>> {
+
+      //random access + sized is allowed because we can jump all iterators to the end
       template <class... Ts>
       static constexpr bool am_common = (std::ranges::common_range<Ts> && ...)
          || ((std::ranges::random_access_range<Ts> && ...) && (std::ranges::sized_range<Ts> && ...));
@@ -19,10 +22,12 @@ namespace tl {
       template <class... Ts>
       static constexpr bool am_sized = (std::ranges::sized_range<Ts> && ...);
 
+      //requires common because we need to be able to cycle the iterators from begin to end in O(n)
       template <class... Ts>
       static constexpr bool am_bidirectional =
          ((std::ranges::bidirectional_range<Ts> && ...) && (std::ranges::common_range<Ts> && ...));
 
+      //requires sized because we need to calculate new positions for iterators using arithmetic modulo the range size
       template <class... Ts>
       static constexpr bool am_random_access =
          ((std::ranges::random_access_range<Ts> && ...) &&
@@ -38,6 +43,9 @@ namespace tl {
       template <bool Const>
       class cursor;
 
+      //Wraps the end iterator for the 0th range.
+      //This is all that's required because the cursor will only ever set the 0th iterator to end when
+      //the cartesian product operation has completed.
       template <bool Const>
       class sentinel {
          using parent = std::conditional_t<Const, const cartesian_product_view, cartesian_product_view>;
@@ -48,6 +56,7 @@ namespace tl {
          sentinel() = default;
          sentinel(std::ranges::sentinel_t<first_base> end) : end_(std::move(end)) {}
 
+         //const-converting constructor
          constexpr sentinel(sentinel<!Const> other) requires Const &&
             (std::convertible_to<std::ranges::sentinel_t<first_base>, std::ranges::sentinel_t<const first_base>>)
             : end_(std::move(other.end_)) {
@@ -77,14 +86,18 @@ namespace tl {
 
          cursor() = default;
          constexpr explicit cursor(begin_tag_t, constify<std::tuple<Vs...>>* bases)
-            : bases_{ bases }, currents_{ std::apply([](auto&&... bs) { return std::make_tuple(std::ranges::begin(bs)...); }, *bases) }
+            : bases_{ bases }, currents_( tl::tuple_transform(std::ranges::begin, *bases) )
          {}
+
+         //If the underlying ranges are common, we can get to the end by assigning from end
          constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
             requires(std::ranges::common_range<Vs> && ...)
             : cursor{ begin_tag, bases }
          {
             std::get<0>(currents_) = std::ranges::end(std::get<0>(*bases_));
          }
+
+         //If the underlying ranges are sized and random access, we can get to the end by moving it forward by size
          constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
             requires(!(std::ranges::common_range<Vs> && ...) && (std::ranges::random_access_range<Vs> && ...) && (std::ranges::sized_range<Vs> && ...))
             : cursor{ begin_tag, bases }
@@ -92,6 +105,7 @@ namespace tl {
             std::get<0>(currents_) += std::ranges::size(std::get<0>(*bases_));
          }
 
+         //const-converting constructor
          constexpr cursor(cursor<!Const> i) requires Const && (std::convertible_to<
             std::ranges::iterator_t<Vs>,
             std::ranges::iterator_t<constify<Vs>>> && ...)
@@ -99,9 +113,7 @@ namespace tl {
 
 
          constexpr decltype(auto) read() const {
-            return std::apply([this](auto&&... currents) {
-               return reference{ *currents... };
-               }, currents_);
+            return tuple_transform([](auto& i) -> decltype(auto) { return *i; }, currents_);
          }
 
          //Increment the iterator at std::get<N>(currents_)
@@ -177,11 +189,11 @@ namespace tl {
          }
 
          template <std::size_t N = (sizeof...(Vs) - 1)>
-         constexpr auto distance_to(cursor const& other) const 
+         constexpr auto distance_to(cursor const& other) const
             requires (am_distanceable<constify<Vs>...>) {
             if constexpr (N == 0) {
                return std::ranges::distance(std::get<0>(currents_), std::get<0>(other.currents_));
-            } 
+            }
             else {
                auto distance = distance_to<N - 1>(other);
                auto scale = std::ranges::distance(std::get<N>(*bases_));
@@ -216,11 +228,13 @@ namespace tl {
          return sentinel<false>(std::ranges::end(std::get<0>(bases_)));
       }
 
-      constexpr auto end() const requires ((std::ranges::range<const Vs> && ...) && !am_common<const Vs...>){
+      constexpr auto end() const requires ((std::ranges::range<const Vs> && ...) && !am_common<const Vs...>) {
          return sentinel<true>(std::ranges::end(std::get<0>(bases_)));
       }
 
+      //TODO ensure the size type is wide enough
       constexpr auto size() requires (am_sized<Vs...>) {
+         //Multiply all the sizes together, returning the common type of all of them
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;
             return (static_cast<size_type>(std::ranges::size(bases)) * ...);
@@ -228,7 +242,6 @@ namespace tl {
       }
 
       constexpr auto size() const requires (am_sized<const Vs...>) {
-         //Multiply all the sizes together, returning the common type of all of them
          return std::apply([](auto&&... bases) {
             using size_type = std::common_type_t<std::ranges::range_size_t<decltype(bases)>...>;
             return (static_cast<size_type>(std::ranges::size(bases)) * ...);

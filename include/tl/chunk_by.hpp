@@ -5,14 +5,17 @@
 #include <iterator>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "utility/semiregular_box.hpp"
 
 namespace tl {
    template <std::ranges::forward_range V, std::predicate<std::ranges::range_reference_t<V>, std::ranges::range_reference_t<V>> F>
+   requires std::ranges::view<V>
    class chunk_by_view 
       : public std::ranges::view_interface<chunk_by_view<V,F>> {
    private:
       V base_;
-      F func_;
+      //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
+      [[no_unique_address]] semiregular_box<F> func_;
 
       template <bool Const>
       struct cursor {
@@ -28,7 +31,7 @@ namespace tl {
          using iterator_category = std::forward_iterator_tag;
 
          void find_end_of_current_range() {
-            auto first_failed = std::adjacent_find(current_, std::end(parent_->base_), std::not_fn(parent_->func_));
+            auto first_failed = std::adjacent_find(current_, std::end(parent_->base_), std::not_fn(*parent_->func_));
             end_of_current_range_ = std::ranges::next(first_failed, 1, std::end(parent_->base_));
          }
 
