@@ -5,18 +5,18 @@
 #include <iterator>
 #include <utility>
 #include "common.hpp"
+#include "basic_iterator.hpp"
 
 namespace tl {
    template <std::ranges::forward_range V, std::invocable<std::ranges::range_reference_t<V>> F>
-   class chunk_by_key_view {
+   class chunk_by_key_view 
+      : public std::ranges::view_interface<chunk_by_key_view<V,F>> {
    private:
       V base_;
       F func_;
 
-      friend struct iterator;
-
       template <bool Const>
-      struct iterator {
+      struct cursor {
          template <class T>
          using constify = std::conditional_t<Const, const T, T>;
 
@@ -38,40 +38,35 @@ namespace tl {
             }
          }
 
-         iterator() = default;
-         constexpr explicit iterator(std::ranges::iterator_t<constify<V>> current, constify<chunk_by_key_view>* parent)
+         cursor() = default;
+         constexpr explicit cursor(std::ranges::iterator_t<constify<V>> current, constify<chunk_by_key_view>* parent)
             : current_(std::move(current)), parent_(parent) {
             find_end_of_current_range();
          }
 
-         constexpr iterator(iterator<!Const> i) requires Const&& std::convertible_to<
+         constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
             std::ranges::iterator_t<V>,
             std::ranges::iterator_t<const V>>
             : current_{ std::move(i.current_) }, end_of_current_range_{ std::move(i.end_of_current_range_) },
             parent_(i.parent_){}
 
-         constexpr auto operator*() {
+         constexpr auto read() const {
             return std::pair(current_key_, std::ranges::subrange{ current_, end_of_current_range_ });
          }
 
-         constexpr iterator& operator++() {
+         constexpr void next() {
             current_ = end_of_current_range_;
             find_end_of_current_range();
-            return *this;
          }
-         constexpr iterator operator++(int) {
-            auto tmp = *this;
-            ++* this;
-            return tmp;
+   
+         constexpr bool equal(cursor const& rhs) const {
+            return current_ == rhs.current_;
          }
-         friend constexpr bool operator==(iterator const& lhs, iterator const& rhs) {
-            return lhs.current_ == rhs.current_;
-         }
-         friend constexpr bool operator==(iterator const& lhs, std::default_sentinel_t) {
-            return lhs.current_ == std::ranges::end(lhs.parent_->base());
+         constexpr bool equal(basic_sentinel<V, Const> const& rhs) const {
+            return current_ == rhs.end();
          }
 
-         friend struct iterator<!Const>;
+         friend struct cursor<!Const>;
       };
 
    public:
@@ -79,15 +74,19 @@ namespace tl {
       chunk_by_key_view(V v, F f) : base_(std::move(v)), func_(std::move(f)) {}
 
       constexpr auto begin() requires (!simple_view<V>) {
-         return iterator<false>{ std::ranges::begin(base_), this };
+         return basic_iterator{ cursor<false>{ std::ranges::begin(base_), this } };
       }
 
       constexpr auto begin() const requires (std::ranges::range<const V>) {
-         return iterator<true>{ std::ranges::begin(base_), this };
+         return basic_iterator{ cursor<true>{ std::ranges::begin(base_), this } };
       }
 
-      constexpr std::default_sentinel_t end() const {
-         return std::default_sentinel;
+      constexpr auto end() requires(!simple_view<V>) {
+         return basic_sentinel<V, false>{std::ranges::end(base_)};
+      }
+
+      constexpr auto end() const requires std::ranges::range<const V> {
+         return basic_sentinel<V, true>{std::ranges::end(base_)};
       }
 
       auto& base() {

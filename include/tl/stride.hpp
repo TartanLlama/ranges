@@ -5,6 +5,7 @@
 #include <ranges>
 #include <type_traits>
 #include "common.hpp"
+#include "basic_iterator.hpp"
 
 namespace tl {
    template <std::ranges::input_range V>
@@ -23,18 +24,15 @@ namespace tl {
 
       template <class T> static constexpr bool am_sized = std::ranges::sized_range<T>;
 
-      template <bool Const>
-      class sentinel;
-
       //Case when underlying range is not bidirectional, i.e. we don't care about calculating offsets
       template <bool Const, class Base = std::conditional_t<Const, const V, V>, bool = std::ranges::bidirectional_range<Base>, bool = std::ranges::sized_range<Base>>
-      struct iterator_base {
+      struct cursor_base {
          std::ranges::iterator_t<Base> current_{};
          std::ranges::range_difference_t<Base> stride_;
          Base* base_;
 
-         iterator_base() = default;
-         constexpr explicit iterator_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
+         cursor_base() = default;
+         constexpr explicit cursor_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
             : current_{ std::move(current) }, stride_{ stride }, base_{ base }  {}
 
          void set_offset(std::ranges::range_difference_t<Base> off) {}
@@ -46,13 +44,13 @@ namespace tl {
 
       //Case when underlying range is bidirectional but not sized. We need to keep track of the offset if we hit the end iterator.
       template <bool Const, class Base>
-      struct iterator_base<Const, Base, true, false> {
+      struct cursor_base<Const, Base, true, false> {
          std::ranges::iterator_t<Base> current_{};
          std::ranges::range_difference_t<Base> stride_;
          Base* base_;
 
-         iterator_base() = default;
-         constexpr explicit iterator_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
+         cursor_base() = default;
+         constexpr explicit cursor_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
             : current_{ std::move(current) }, stride_{ stride }, base_{ base }  {}
 
          using difference_type = std::ranges::range_difference_t<Base>;
@@ -69,13 +67,13 @@ namespace tl {
 
       //Case where underlying is bidirectional and sized. We can calculate offsets from the end on-demand.
       template <bool Const, class Base>
-      struct iterator_base<Const, Base, true, true> {
+      struct cursor_base<Const, Base, true, true> {
          std::ranges::iterator_t<Base> current_{};
          std::ranges::range_difference_t<Base> stride_;
          Base* base_;
 
-         iterator_base() = default;
-         constexpr explicit iterator_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
+         cursor_base() = default;
+         constexpr explicit cursor_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
             : current_{ std::move(current) }, stride_{ stride }, base_{ base }  {}
 
          void set_offset(std::ranges::range_difference_t<Base>) {}
@@ -86,24 +84,23 @@ namespace tl {
       };
 
       template <bool Const>
-      class iterator : iterator_base<Const> {
+      class cursor : cursor_base<Const> {
          using Base = std::conditional_t<Const, const V, V>;
 
       public:
-         using iterator_category = typename std::iterator_traits<
-            std::ranges::iterator_t<Base>>::iterator_category;
+         using iterator_category = typename std::ranges::iterator_t<Base>::iterator_category; //TODO use iterator_traits
          using reference = std::ranges::range_reference_t<Base>;
          using value_type = std::ranges::range_value_t<Base>;
          using difference_type = std::ranges::range_difference_t<Base>;
 
-         iterator() = default;
-         constexpr explicit iterator(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
-            : iterator_base<Const>{ std::move(current), stride, base } {}
+         cursor() = default;
+         constexpr explicit cursor(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
+            : cursor_base<Const>{ std::move(current), stride, base } {}
 
-         constexpr iterator(iterator<!Const> i) requires Const&& std::convertible_to<
+         constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
             std::ranges::iterator_t<V>,
             std::ranges::iterator_t<Base>>
-            : iterator_base<!Const>{ std::move(i.current_), i.stride_, i.base_ } {}
+            : cursor_base<!Const>{ std::move(i.current_), i.stride_, i.base_ } {}
 
          constexpr std::ranges::iterator_t<Base> base()
             const& requires std::copyable<std::ranges::iterator_t<Base>> {
@@ -113,44 +110,26 @@ namespace tl {
             return std::move(this->current_);
          }
 
-         constexpr decltype(auto) operator*() const {
+         constexpr decltype(auto) read() const {
             return *this->current_;
          }
 
-         constexpr iterator& operator++() {
+         constexpr void next() {
             auto last = std::ranges::end(*this->base_);
             auto delta = std::ranges::advance(this->current_, this->stride_, last);
             this->set_offset(delta);
-            return *this;
-         }
-         constexpr void operator++(int) requires(!std::ranges::forward_range<Base>) {
-            (void)operator++();
-         }
-         constexpr iterator operator++(
-            int) requires std::ranges::forward_range<Base> {
-            auto temp = *this;
-            this->operator++();
-            return temp;
          }
 
-         constexpr iterator&
-            operator--() requires std::ranges::bidirectional_range<Base> {
+         constexpr void prev() requires std::ranges::bidirectional_range<Base> {
             auto delta = -this->stride_;
             if (this->current_ == std::ranges::end(*this->base_)) {
                delta += this->get_offset();
             }
             std::advance(this->current_, delta);
-            return *this;
          }
-         constexpr iterator operator--(
-            int) requires std::ranges::bidirectional_range<Base> {
-            auto temp = *this;
-            this->operator--();
-            return temp;
-         }
-         constexpr iterator& operator+=(
-            difference_type x) requires std::ranges::random_access_range<Base> {
-            if (x == 0) return *this;
+
+         constexpr void advance(difference_type x) requires std::ranges::random_access_range<Base> {
+            if (x == 0) return;
 
             auto last = std::ranges::end(*this->base_);
             x *= this->stride_;
@@ -165,117 +144,51 @@ namespace tl {
                }
                std::advance(this->current, x);
             }
-
-            return *this;
-         }
-         constexpr iterator& operator-=(
-            difference_type x) requires std::ranges::random_access_range<Base> {
-            this->operator+=(-x);
-            return *this;
-         }
-         constexpr decltype(auto) operator[](difference_type n) const
-            requires std::ranges::random_access_range<Base> {
-            return *((*this) + n);
          }
 
-         friend constexpr bool operator==(const iterator& x,
-            const iterator& y) requires std::
+         constexpr bool equal(const cursor& rhs) const requires std::
             equality_comparable<std::ranges::iterator_t<Base>> {
-            return x.current_ == y.current_;
+            return this->current_ == rhs.current_;
          }
 
-         friend constexpr auto operator<(
-            const iterator& x,
-            const iterator& y) requires std::ranges::random_access_range<Base> {
-            return x.current_ < y.current_;
-         }
-         friend constexpr auto operator>(
-            const iterator& x,
-            const iterator& y) requires std::ranges::random_access_range<Base> {
-            return x.current_ > y.current_;
-         }
-         friend constexpr auto operator<=(
-            const iterator& x,
-            const iterator& y) requires std::ranges::random_access_range<Base> {
-            return x.current_ <= y.current_;
-         }
-         friend constexpr auto operator>=(
-            const iterator& x,
-            const iterator& y) requires std::ranges::random_access_range<Base> {
-            return x.current_ >= y.current_;
-         }
-         friend constexpr auto operator<=>(const iterator& x,
-            const iterator& y) requires std::ranges::
-            random_access_range<Base>&& std::three_way_comparable<
-            std::ranges::iterator_t<Base>> {
-            return x.current_ <=> y.current_;
+         constexpr bool equal(const basic_sentinel<V, Const>& rhs) const {
+            return this->current_ == rhs.end();
          }
 
-         friend constexpr iterator operator+(
-            const iterator& x,
-            difference_type y) requires std::ranges::random_access_range<Base> {
-            return iterator{ x } += y;
-         }
-         friend constexpr iterator operator+(
-            difference_type x,
-            const iterator& y) requires std::ranges::random_access_range<Base> {
-            return y + x;
-         }
-         friend constexpr iterator operator-(
-            const iterator& x,
-            difference_type y) requires std::ranges::random_access_range<Base> {
-            return iterator{ x } - y;
+         auto distance_to(const cursor& rhs) const
+            requires std::sized_sentinel_for<std::ranges::iterator_t<Base>, std::ranges::iterator_t<Base>> {
+            return (rhs.current_ - this->current_) / this->stride_;
          }
 
-         friend class iterator<!Const>;
-         template <bool>
-         friend class sentinel;
+         friend class cursor<!Const>;
       };
 
-      template <bool Const>
-      class sentinel {
-         using parent = std::conditional_t<Const, const V, V>;
-         std::ranges::sentinel_t<parent> end_;
-
-      public:
-         sentinel() = default;
-         sentinel(std::ranges::sentinel_t<parent> end) : end_(std::move(end)) {}
-
-         friend constexpr bool operator==(sentinel const& s, std::ranges::iterator_t<parent> const& it) {
-            return it.current_ == s.end_;
-         }
-
-         constexpr sentinel(sentinel<!Const> other) requires Const &&
-            (std::convertible_to<std::ranges::sentinel_t<parent>, std::ranges::sentinel_t<const parent>>)
-            : end_(std::move(other.end_)) {
-         }
-      };
 
    public:
       stride_view() = default;
       stride_view(V base, std::ranges::range_difference_t<V> d) : base_(std::move(base)), stride_(d) {}
 
       constexpr auto begin() requires (!simple_view<V>) {
-         return iterator<false>(std::ranges::begin(base_), stride_, std::addressof(base_));
+         return basic_iterator{ cursor<false>(std::ranges::begin(base_), stride_, std::addressof(base_)) };
       }
       constexpr auto begin() const requires (std::ranges::range<const V>) {
-         return iterator<true>(std::ranges::begin(base_), stride_, std::addressof(base_));
+         return basic_iterator { cursor<true>(std::ranges::begin(base_), stride_, std::addressof(base_)) };
       }
 
       constexpr auto end() requires (!simple_view<V> && am_common<V>) {
-         return iterator<false>(std::ranges::end(base_), stride_, std::addressof(base_));
+         return basic_iterator { cursor<false>(std::ranges::end(base_), stride_, std::addressof(base_)) };
       }
 
       constexpr auto end() const requires (std::ranges::range<const V>&& am_common<const V>) {
-         return iterator<true>(std::ranges::end(base_), stride_, std::addressof(base_));
+         return basic_iterator { cursor<true>(std::ranges::end(base_), stride_, std::addressof(base_)) };
       }
 
       constexpr auto end() requires (!simple_view<V> && !am_common<V>) {
-         return sentinel<false>(std::ranges::end(base_));
+         return basic_sentinel<V,false>(std::ranges::end(base_));
       }
 
       constexpr auto end() const requires (std::ranges::range<const V> && !am_common<const V>) {
-         return sentinel<true>(std::ranges::end(base_));
+         return basic_sentinel<V,true>(std::ranges::end(base_));
       }
 
       constexpr auto size() requires (am_sized<V>) {
@@ -316,7 +229,7 @@ namespace tl {
 
             template <std::integral D>
             constexpr auto operator()(D d) const {
-               return stride_view_closure{ d };
+               return stride_view_closure<D>(d);
             }
          };
       }  // namespace detail

@@ -6,6 +6,9 @@
 
 namespace tl {
    namespace detail {
+      template <class I>
+      concept single_pass_iterator = std::input_or_output_iterator<I> && !std::forward_iterator<I>;
+
       template <typename... V>
       constexpr auto common_iterator_category() {
          if constexpr ((std::ranges::random_access_range<V> && ...))

@@ -84,7 +84,9 @@ TEST_CASE("bidirectional") {
 
    auto res_it = res.begin();
    auto v = tl::cartesian_product_view(a, b, c);
-   for (auto it = --std::ranges::next(v.begin(), v.end()); it != v.begin(); --it) {
+   auto it = std::ranges::next(v.begin(), v.end());
+   --it;
+   for (; it != v.begin(); --it) {
       REQUIRE(*it == std::tie((*res_it)[0], (*res_it)[1], (*res_it)[2]));
       ++res_it;
    }
@@ -133,6 +135,8 @@ TEST_CASE("common") {
       auto begin = std::ranges::begin(abv);
       std::ranges::advance(begin, std::ranges::end(abv));
       REQUIRE(begin == std::ranges::end(abv));
-      REQUIRE(--begin == --std::ranges::end(abv));
+      auto end = std::ranges::end(abv);
+      --end;
+      REQUIRE(--begin == end);
    }
 }

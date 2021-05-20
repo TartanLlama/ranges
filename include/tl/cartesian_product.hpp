@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <tuple>
 #include "common.hpp"
+#include "basic_iterator.hpp"
 
 namespace tl {
    template <std::ranges::forward_range... Vs>
@@ -27,13 +28,37 @@ namespace tl {
          ((std::ranges::random_access_range<Ts> && ...) &&
             (std::ranges::sized_range<Ts> && ...));
 
+      template <class... Ts>
+      static constexpr bool am_distanceable =
+         ((std::sized_sentinel_for<std::ranges::iterator_t<Ts>, std::ranges::iterator_t<Ts>>) && ...)
+         && am_sized<Ts...>;
+
       std::tuple<Vs...> bases_;
 
       template <bool Const>
-      class sentinel;
+      class cursor;
 
       template <bool Const>
-      class iterator {
+      class sentinel {
+         using parent = std::conditional_t<Const, const cartesian_product_view, cartesian_product_view>;
+         using first_base = decltype(std::get<0>(std::declval<parent>().bases_));
+         std::ranges::sentinel_t<first_base> end_;
+
+      public:
+         sentinel() = default;
+         sentinel(std::ranges::sentinel_t<first_base> end) : end_(std::move(end)) {}
+
+         constexpr sentinel(sentinel<!Const> other) requires Const &&
+            (std::convertible_to<std::ranges::sentinel_t<first_base>, std::ranges::sentinel_t<const first_base>>)
+            : end_(std::move(other.end_)) {
+         }
+
+         template <bool>
+         friend class cursor;
+      };
+
+      template <bool Const>
+      class cursor {
          template<class T>
          using constify = std::conditional_t<Const, const T, T>;
 
@@ -41,7 +66,8 @@ namespace tl {
          std::tuple<std::ranges::iterator_t<constify<Vs>>...> currents_{};
 
       public:
-         using iterator_category = tl::common_iterator_category<constify<Vs>...>;
+         using iterator_category = std::forward_iterator_tag;
+         using iterator_concept = tl::common_iterator_category<constify<Vs>...>;
          using reference =
             std::tuple<std::ranges::range_reference_t<constify<Vs>>...>;
          using value_type =
@@ -49,30 +75,30 @@ namespace tl {
 
          using difference_type = std::ptrdiff_t;
 
-         iterator() = default;
-         constexpr explicit iterator(begin_tag_t, constify<std::tuple<Vs...>>* bases)
+         cursor() = default;
+         constexpr explicit cursor(begin_tag_t, constify<std::tuple<Vs...>>* bases)
             : bases_{ bases }, currents_{ std::apply([](auto&&... bs) { return std::make_tuple(std::ranges::begin(bs)...); }, *bases) }
          {}
-         constexpr explicit iterator(end_tag_t, constify<std::tuple<Vs...>>* bases)
+         constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
             requires(std::ranges::common_range<Vs> && ...)
-            : iterator{ begin_tag, bases }
+            : cursor{ begin_tag, bases }
          {
             std::get<0>(currents_) = std::ranges::end(std::get<0>(*bases_));
          }
-         constexpr explicit iterator(end_tag_t, constify<std::tuple<Vs...>>* bases)
+         constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
             requires(!(std::ranges::common_range<Vs> && ...) && (std::ranges::random_access_range<Vs> && ...) && (std::ranges::sized_range<Vs> && ...))
-            : iterator{ begin_tag, bases }
+            : cursor{ begin_tag, bases }
          {
             std::get<0>(currents_) += std::ranges::size(std::get<0>(*bases_));
          }
 
-         constexpr iterator(iterator<!Const> i) requires Const && (std::convertible_to<
+         constexpr cursor(cursor<!Const> i) requires Const && (std::convertible_to<
             std::ranges::iterator_t<Vs>,
             std::ranges::iterator_t<constify<Vs>>> && ...)
             : bases_{ std::move(i.bases_) }, currents_{ std::move(i.currents_) } {}
 
 
-         constexpr decltype(auto) operator*() const {
+         constexpr decltype(auto) read() const {
             return std::apply([this](auto&&... currents) {
                return reference{ *currents... };
                }, currents_);
@@ -95,7 +121,7 @@ namespace tl {
          //Decrement the iterator at std::get<N>(currents_)
          //If that iterator was at its begin, cycle it to end and recurse to std::get<N-1>
          template <std::size_t N = (sizeof...(Vs) - 1)>
-         void prev() {
+         void prev() requires (am_bidirectional<constify<Vs>...>) {
             auto& it = std::get<N>(currents_);
             if (it == std::ranges::begin(std::get<N>(*bases_))) {
                std::ranges::advance(it, std::ranges::end(std::get<N>(*bases_)));
@@ -107,7 +133,7 @@ namespace tl {
          }
 
          template <std::size_t N = (sizeof...(Vs) - 1)>
-         void advance(difference_type n) {
+         void advance(difference_type n) requires (am_random_access<constify<Vs>...>) {
             auto& it = std::get<N>(currents_);
             auto& base = std::get<N>(*bases_);
             auto begin = std::ranges::begin(base);
@@ -141,117 +167,30 @@ namespace tl {
             }
          }
 
-         constexpr iterator& operator++() {
-            next();
-            return *this;
-         }
-         constexpr void operator++(int) requires(!(std::ranges::forward_range<constify<Vs>> && ...)) {
-            (void)operator++();
-         }
-         constexpr iterator operator++(
-            int) requires (std::ranges::forward_range<constify<Vs>> && ...) {
-            auto temp = *this;
-            next();
-            return temp;
+         constexpr bool equal(const cursor& rhs) const
+            requires (std::equality_comparable<std::ranges::iterator_t<constify<Vs>>> && ...) {
+            return currents_ == rhs.currents_;
          }
 
-         constexpr iterator&
-            operator--() requires (am_bidirectional<constify<Vs>...>) {
-            prev();
-            return *this;
-         }
-         constexpr iterator operator--(
-            int) requires (am_bidirectional<constify<Vs>...>) {
-            auto temp = *this;
-            prev();
-            return temp;
+         constexpr bool equal(const sentinel<Const>& s) const {
+            return std::get<0>(currents_) == s.end_;
          }
 
-         constexpr iterator& operator+=(
-            difference_type x) requires (am_random_access<constify<Vs>...>) {
-            advance(x);
-            return *this;
-         }
-         constexpr iterator& operator-=(
-            difference_type x) requires (am_random_access<constify<Vs>...>) {
-            this->operator+=(-x);
-            return *this;
-         }
-         constexpr decltype(auto) operator[](difference_type n) const
-            requires (am_random_access<constify<Vs>...>) {
-            return *((*this) + n);
-         }
-
-         friend constexpr iterator operator+(
-            const iterator& x,
-            difference_type y) requires (am_random_access<constify<Vs>...>) {
-            return iterator{ x } += y;
-         }
-         friend constexpr iterator operator+(
-            difference_type x,
-            const iterator& y) requires (am_random_access<constify<Vs>...>) {
-            return y + x;
-         }
-         friend constexpr iterator operator-(
-            const iterator& x,
-            difference_type y) requires (am_random_access<constify<Vs>...>) {
-            return iterator{ x } -= y;
+         template <std::size_t N = (sizeof...(Vs) - 1)>
+         constexpr auto distance_to(cursor const& other) const 
+            requires (am_distanceable<constify<Vs>...>) {
+            if constexpr (N == 0) {
+               return std::ranges::distance(std::get<0>(currents_), std::get<0>(other.currents_));
+            } 
+            else {
+               auto distance = distance_to<N - 1>(other);
+               auto scale = std::ranges::distance(std::get<N>(*bases_));
+               auto diff = std::ranges::distance(std::get<N>(currents_), std::get<N>(other.currents_));
+               return difference_type{ distance * scale + diff };
+            }
          }
 
-         friend constexpr bool operator==(const iterator& x,
-            const iterator& y) requires (std::
-               equality_comparable < std::ranges::iterator_t<constify<Vs>>> && ...) {
-            return x.currents_ == y.currents_;
-         }
-
-         friend constexpr auto operator<(
-            const iterator& x,
-            const iterator& y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
-            return x.currents_ < y.currents_;
-         }
-         friend constexpr auto operator>(
-            const iterator& x,
-            const iterator& y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
-            return x.currents_ > y.currents_;
-         }
-         friend constexpr auto operator<=(
-            const iterator& x,
-            const iterator& y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
-            return x.currents_ <= y.currents_;
-         }
-         friend constexpr auto operator>=(
-            const iterator& x,
-            const iterator& y) requires (std::ranges::random_access_range<constify<Vs>> && ...) {
-            return x.currents_ >= y.currents_;
-         }
-         friend constexpr auto operator<=>(const iterator& x,
-            const iterator& y) requires ((std::ranges::random_access_range<constify<Vs>>&& std::three_way_comparable<constify<Vs>>) && ...) {
-            return x.currents_ <=> y.currents_;
-         }
-
-         template <bool>
-         friend class sentinel;
-         friend class iterator<!Const>;
-      };
-
-      template <bool Const>
-      class sentinel {
-         using parent = std::conditional_t<Const, const cartesian_product_view, cartesian_product_view>;
-         using first_base = decltype(get<0>(std::declval<parent>().bases_));
-         std::ranges::sentinel_t<first_base> end_;
-
-      public:
-         sentinel() = default;
-         sentinel(std::ranges::sentinel_t<first_base> end) : end_(std::move(end)) {}
-
-         friend constexpr bool operator==(sentinel const& s, std::ranges::iterator_t<parent> const& it) {
-            return get<0>(it.current_) == s.end_;
-         }
-
-         constexpr sentinel(sentinel<!Const> other) requires Const &&
-            (std::convertible_to<std::ranges::sentinel_t<first_base>, std::ranges::sentinel_t<const first_base>>)
-            : end_(std::move(other.end_)){
-         }
+         friend class cursor<!Const>;
       };
 
    public:
@@ -259,18 +198,18 @@ namespace tl {
       explicit cartesian_product_view(Vs... bases) : bases_(std::move(bases)...) {}
 
       constexpr auto begin() requires (!(simple_view<Vs> && ...)) {
-         return iterator<false>(begin_tag, std::addressof(bases_));
+         return basic_iterator{ cursor<false>(begin_tag, std::addressof(bases_)) };
       }
       constexpr auto begin() const requires (std::ranges::range<const Vs> && ...) {
-         return iterator<true>(begin_tag, std::addressof(bases_));
+         return basic_iterator{ cursor<true>(begin_tag, std::addressof(bases_)) };
       }
 
       constexpr auto end() requires (!(simple_view<Vs> && ...) && am_common<Vs...>) {
-         return iterator<false>(end_tag, std::addressof(bases_));
+         return basic_iterator{ cursor<false>(end_tag, std::addressof(bases_)) };
       }
 
       constexpr auto end() const requires (am_common<const Vs...>) {
-         return iterator<true>(end_tag, std::addressof(bases_));
+         return basic_iterator{ cursor<true>(end_tag, std::addressof(bases_)) };
       }
 
       constexpr auto end() requires(!(simple_view<Vs> && ...) && !am_common<Vs...>) {

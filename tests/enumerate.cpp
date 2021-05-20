@@ -3,7 +3,7 @@
 #include <catch2/catch.hpp>
 #include <iostream>
 #include <vector>
-
+template<class> struct TC;
 TEST_CASE("basic vector") {
   std::vector a{1, 2, 3};
   int i = 0;
@@ -54,53 +54,8 @@ TEST_CASE("modify vector") {
   REQUIRE(a == std::vector{0, 1, 2});
 }
 
-struct iota_view
-   : public std::ranges::view_interface<iota_view> {
-   struct sentinel {};
-   struct iterator {
-      std::size_t pos_ = 0;
-
-      using iterator_category = std::input_iterator_tag;
-      using reference = std::size_t&;
-      using value_type = std::size_t;
-      using difference_type = std::ptrdiff_t;
-
-      constexpr decltype(auto) operator*() const {
-         return pos_;
-      }
-
-      constexpr iterator& operator++() {
-         ++pos_;
-         return *this;
-      }
-
-      constexpr iterator operator++(int) const {
-         auto temp = *this;
-         ++temp.pos_;
-         return temp;
-      }
-
-      friend constexpr bool operator==(const iterator& x, const iterator& y) {
-         return x.pos_ == y.pos_;
-      }
-      friend constexpr bool operator==(const iterator& x, const sentinel& y) {
-         return false;
-      }
-   };
-
-   iota_view() = default;
-
-   constexpr auto begin() {
-      return iterator{};
-   }
-   constexpr auto end() const { return sentinel{}; }
-};
-
-template<>
-constexpr bool std::ranges::enable_borrowed_range<iota_view> = true;
-
-TEST_CASE("unsized view") {
-   for (auto&& [i, j] : (iota_view{} | tl::views::enumerate | std::views::take(10))) {
+TEST_CASE("issue #2") {
+   for (auto&& [i, j] : (std::views::iota(0) | tl::views::enumerate | std::views::take(10))) {
       REQUIRE(i == j);
    }
 }

@@ -15,7 +15,7 @@ TEST_CASE("stride") {
       i += 3;
    }
 }
-
+template<class>struct TC;
 TEST_CASE("stride pipe") {
    std::vector<int> v{ 0, 1, 2, 3, 4, 5, 6 };
 
