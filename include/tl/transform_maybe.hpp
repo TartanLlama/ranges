@@ -7,9 +7,10 @@
 #include "basic_iterator.hpp"
 
 namespace tl {
+   template<class >struct TC;
    template <std::ranges::input_range V, std::invocable<std::ranges::range_reference_t<V>> F>
    requires std::ranges::view<V>
-   class transform_maybe_view : std::ranges::view_interface<transform_maybe_view<V,F>> {
+   class transform_maybe_view : public std::ranges::view_interface<transform_maybe_view<V,F>> {
    private:
       V base_;
       F func_;
@@ -80,7 +81,9 @@ namespace tl {
 
       transform_maybe_view() = default;
       transform_maybe_view(V v, F f) : base_(std::move(v)), func_(std::move(f)) {}
+      ~transform_maybe_view() {
 
+      }
       constexpr auto begin() requires(!simple_view<V>) {
          return basic_iterator{ cursor<false>(begin_tag, this) };
       }
@@ -130,8 +133,4 @@ namespace tl {
    }
 }
 
-namespace std::ranges {
-   template <class V, class F>
-   inline constexpr bool enable_borrowed_range<tl::transform_maybe_view<V, F>> = enable_borrowed_range<V>;
-}
 #endif
