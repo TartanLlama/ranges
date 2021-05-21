@@ -8,7 +8,7 @@
 
 namespace tl {
    template <std::ranges::forward_range V>
-   requires std::ranges::view<V> class cycle_view
+   requires (std::ranges::view<V> && (std::ranges::common_range<V> || !std::ranges::bidirectional_range<V>)) class cycle_view
       : public std::ranges::view_interface<cycle_view<V>> {
       V base_;
 
@@ -20,16 +20,13 @@ namespace tl {
          Base* base_ = nullptr;
  
       public:
-         using iterator_category = typename std::iterator_traits<
-            std::ranges::iterator_t<Base>>::iterator_category;
-         using reference = std::ranges::range_reference_t<Base>;
-         using value_type = std::ranges::range_value_t<Base>;
          using difference_type = std::ranges::range_difference_t<Base>;
 
          cursor() = default;
          constexpr explicit cursor(std::ranges::iterator_t<Base> current, Base* base)
             : current_{ std::move(current) }, base_{ base }  {}
 
+         //const-converting constructor
          constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
             std::ranges::iterator_t<V>,
             std::ranges::iterator_t<Base>>

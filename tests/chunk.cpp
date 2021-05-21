@@ -13,3 +13,14 @@ TEST_CASE("chunk") {
       REQUIRE(std::ranges::equal(group, groups[idx]));
    }
 }
+
+TEST_CASE("borrow") {
+   std::vector<int> a{ 0,1,2,3,4,5,6,7,8,9,10 };
+   std::vector<std::vector<int>> groups{ {0,1,2,3}, {4,5,6,7}, {8,9,10} };
+
+   auto subrange = std::ranges::subrange(a | tl::views::chunk(4) | tl::views::enumerate);
+
+   for (auto&& [idx, group] : subrange) {
+      REQUIRE(std::ranges::equal(group, groups[idx]));
+   }
+}

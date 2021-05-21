@@ -75,8 +75,6 @@ namespace tl {
          std::tuple<std::ranges::iterator_t<constify<Vs>>...> currents_{};
 
       public:
-         using iterator_category = std::forward_iterator_tag;
-         using iterator_concept = tl::common_iterator_category<constify<Vs>...>;
          using reference =
             std::tuple<std::ranges::range_reference_t<constify<Vs>>...>;
          using value_type =
@@ -232,7 +230,6 @@ namespace tl {
          return sentinel<true>(std::ranges::end(std::get<0>(bases_)));
       }
 
-      //TODO ensure the size type is wide enough
       constexpr auto size() requires (am_sized<Vs...>) {
          //Multiply all the sizes together, returning the common type of all of them
          return std::apply([](auto&&... bases) {

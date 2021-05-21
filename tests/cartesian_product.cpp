@@ -140,3 +140,17 @@ TEST_CASE("common") {
       REQUIRE(--begin == end);
    }
 }
+
+TEST_CASE("iterator category") {
+   std::vector<int> a{ 0,1,2 };
+   std::list<int> b{ 0,1,2 };
+   std::forward_list<int> c{ 0,1,2 };
+
+   using namespace tl::views;
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(a, a).begin())>::iterator_category, std::input_iterator_tag>);
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(a, a).begin())>::iterator_concept, std::random_access_iterator_tag>);
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(b, b).begin())>::iterator_category, std::input_iterator_tag>);
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(b, b).begin())>::iterator_concept, std::bidirectional_iterator_tag>);
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(c, c).begin())>::iterator_category, std::input_iterator_tag>);
+   STATIC_REQUIRE(std::same_as<typename std::iterator_traits<decltype(cartesian_product(c, c).begin())>::iterator_concept, std::forward_iterator_tag>);
+}

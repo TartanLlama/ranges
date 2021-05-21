@@ -4,6 +4,7 @@
 #include <concepts>
 #include <iterator>
 #include <utility>
+#include "common.hpp"
 
 namespace tl {
    template <std::destructible T>
@@ -159,20 +160,74 @@ namespace tl {
       template <class C>
       concept contiguous = random_access<C> && tagged_contiguous<C> && std::is_reference_v<reference_t<C>>;
 
-      template <class>
-      struct category {};
-      template <input C>
-      struct category<C> { using type = std::input_iterator_tag; };
-      template <forward C>
-      struct category<C> { using type = std::forward_iterator_tag; };
-      template <bidirectional C>
-      struct category<C> { using type = std::bidirectional_iterator_tag; };
-      template <random_access C>
-      struct category<C> { using type = std::random_access_iterator_tag; };
-      template <contiguous C>
-      struct category<C> { using type = std::contiguous_iterator_tag; };
       template <class C>
-      using category_t = typename category<C>::type;
+      constexpr auto cpp20_iterator_category() {
+         if constexpr (contiguous<C>)
+            return std::contiguous_iterator_tag{};
+         else if constexpr (random_access<C>)
+            return std::random_access_iterator_tag{};
+         else if constexpr (bidirectional<C>)
+            return std::bidirectional_iterator_tag{};
+         else if constexpr (forward<C>)
+            return std::forward_iterator_tag{};
+         else
+            return std::input_iterator_tag{};
+      }
+      template <class C>
+      using cpp20_iterator_category_t = decltype(cpp20_iterator_category<C>());
+
+      //There were a few changes in requirements on iterators between C++17 and C++20
+      //See https://wg21.link/p2259 for discussion
+      //- C++17 didn't have contiguous iterators
+      //- C++17 input iterators required *it++ to be valid
+      //- C++17 forward iterators required the reference type to be exactly value_type&/value_type const& (i.e. not a proxy)
+      struct not_a_cpp17_iterator {};
+
+      template <class C>
+      concept reference_is_value_type_ref = 
+         (std::same_as<reference_t<C>, value_type_t<C>&> || std::same_as<reference_t<C>, value_type_t<C> const&>);
+
+      template <class C>
+      concept can_create_postincrement_proxy =
+         (std::move_constructible<value_type_t<C>> && std::constructible_from<value_type_t<C>, reference_t<C>>);
+
+      template <class C>
+      constexpr auto cpp17_iterator_category() {
+         if constexpr (random_access<C> && reference_is_value_type_ref<C>)
+            return std::random_access_iterator_tag{};
+         else if constexpr (bidirectional<C> && reference_is_value_type_ref<C>)
+            return std::bidirectional_iterator_tag{};
+         else if constexpr (forward<C> && reference_is_value_type_ref<C>)
+            return std::forward_iterator_tag{};
+         else if constexpr (can_create_postincrement_proxy<C>)
+            return std::input_iterator_tag{};
+         else
+            return not_a_cpp17_iterator{};
+      }
+      template <class C>
+      using cpp17_iterator_category_t = decltype(cpp17_iterator_category<C>());
+
+      //iterator_concept and iterator_category are tricky; this abstracts them out.
+      //Since the rules for iterator categories changed between C++17 and C++20
+      //a C++20 iterator may have a weaker category in C++17,
+      //or it might not be a valid C++17 iterator at all.
+      //iterator_concept will be the C++20 iterator category.
+      //iterator_category will be the C++17 iterator category, or it will not exist
+      //in the case that the iterator is not a valid C++17 iterator.
+      template <cursor C, class category = cpp17_iterator_category_t<C>>
+      struct associated_types_category_base {
+         using iterator_category = category;
+      };
+      template <cursor C>
+      struct associated_types_category_base<C, not_a_cpp17_iterator> {};
+
+      template <cursor C>
+      struct associated_types : associated_types_category_base<C> {
+         using iterator_concept = cpp20_iterator_category_t<C>;
+         using value_type = cursor::value_type_t<C>;
+         using difference_type = cursor::difference_type_t<C>;
+         using reference = cursor::reference_t<C>;
+      };
 
       namespace detail {
          // We assume a cursor is writeable if it's either not readable
@@ -196,6 +251,25 @@ namespace tl {
       }
    }
 
+   namespace detail {
+      template <class T>
+      struct post_increment_proxy {
+      private:
+         T cache_;
+
+      public:
+         template<typename U>
+         constexpr post_increment_proxy(U&& t)
+            : cache_(std::forward<U>(t))
+         {}
+         constexpr T const& operator*() const noexcept
+         {
+            return cache_;
+         }
+      };
+   }
+
+
    template <cursor::input C>
    class basic_iterator :
       public cursor::mixin_t<C>
@@ -218,13 +292,13 @@ namespace tl {
 
       using value_type = cursor::value_type_t<C>;
       using difference_type = cursor::difference_type_t<C>;
-      using iterator_category = cursor::category_t<C>; //TODO make C++17 compliant
+      using reference = cursor::reference_t<C>;
 
       basic_iterator() = default;
 
       using mixin::mixin;
 
-      constexpr explicit basic_iterator(C&& c) 
+      constexpr explicit basic_iterator(C&& c)
          noexcept(std::is_nothrow_constructible_v<mixin, C&&>) :
          mixin(std::move(c)) {}
 
@@ -322,9 +396,9 @@ namespace tl {
          && std::is_lvalue_reference<const_reference_t>::value{
          return std::addressof(**this);
       }
-      
-      // modifiers
-      constexpr basic_iterator& operator++() & noexcept {
+
+         // modifiers
+         constexpr basic_iterator& operator++() & noexcept {
          return *this;
       }
       constexpr basic_iterator& operator++() &
@@ -334,14 +408,30 @@ namespace tl {
          return *this;
       }
 
+      //C++17 required that *it++ was valid.
+      //For input iterators, we can't copy *this, so we need to create a proxy reference.
+      constexpr void operator++(int) &
+         noexcept(noexcept(++std::declval<basic_iterator&>()) &&
+            std::is_nothrow_move_constructible_v<value_type>&&
+            std::is_nothrow_constructible_v<value_type, reference>)
+         requires (cursor::single_pass<C>&&
+            std::move_constructible<value_type>&&
+            std::constructible_from<value_type, reference>) {
+         detail::post_increment_proxy p(**this);
+         ++* this;
+         return p;
+      }
+
+      //If we can't create a proxy reference, it++ is going to return void
       constexpr void operator++(int) &
          noexcept(noexcept(++std::declval<basic_iterator&>()))
          requires cursor::single_pass<C> {
          (void)(++(*this));
       }
 
-      constexpr basic_iterator& operator++(int) &
-         noexcept(std::is_nothrow_copy_constructible_v<C> &&
+      //If C is a forward cursor then copying it is fine
+      constexpr basic_iterator operator++(int) &
+         noexcept(std::is_nothrow_copy_constructible_v<C>&&
             std::is_nothrow_move_constructible_v<C> &&
             noexcept(++std::declval<basic_iterator&>()))
          requires (!cursor::single_pass<C>) {
@@ -357,6 +447,9 @@ namespace tl {
          return *this;
       }
 
+      //Postfix decrement doesn't have the same issue as postfix increment
+      //because bidirectional requires the cursor to be a forward cursor anyway
+      //so copying it is fine.
       constexpr basic_iterator operator--(int) &
          noexcept(std::is_nothrow_copy_constructible<basic_iterator>::value&&
             std::is_nothrow_move_constructible<basic_iterator>::value &&
@@ -475,7 +568,7 @@ namespace tl {
       constexpr cursor::difference_type_t<C2> operator-(
          const basic_iterator<C1>& lhs, const basic_iterator<C2>& rhs)
       noexcept(noexcept(
-        rhs.get().distance_to(lhs.get()))) {
+         rhs.get().distance_to(lhs.get()))) {
       return rhs.get().distance_to(lhs.get());
    }
    template <class C, class S>
@@ -579,7 +672,7 @@ namespace tl {
       constexpr explicit basic_sentinel(std::ranges::sentinel_t<Base> end)
          : end_{ std::move(end) } {}
 
-      constexpr basic_sentinel(basic_sentinel<V,!Const> other) requires Const&& std::
+      constexpr basic_sentinel(basic_sentinel<V, !Const> other) requires Const&& std::
          convertible_to<std::ranges::sentinel_t<V>,
          std::ranges::sentinel_t<Base>>
          : end_{ std::move(other.end_) } {}
@@ -588,7 +681,12 @@ namespace tl {
          return end_;
       }
 
-      friend class basic_sentinel<V,!Const>;
+      friend class basic_sentinel<V, !Const>;
    };
+}
+
+namespace std {
+   template <class C>
+   struct iterator_traits<tl::basic_iterator<C>> : tl::cursor::associated_types<C> {};
 }
 #endif

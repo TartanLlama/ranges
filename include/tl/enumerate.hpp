@@ -158,4 +158,9 @@ namespace tl {
    }  // namespace views
 }  // namespace tl
 
+namespace std::ranges {
+   template <class R>
+   inline constexpr bool enable_borrowed_range<tl::enumerate_view<R>> = enable_borrowed_range<R>;
+}
+
 #endif

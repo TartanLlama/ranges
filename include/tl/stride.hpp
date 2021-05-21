@@ -35,7 +35,7 @@ namespace tl {
          constexpr explicit cursor_base(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> stride, Base* base)
             : current_{ std::move(current) }, stride_{ stride }, base_{ base }  {}
 
-         void set_offset(std::ranges::range_difference_t<Base> off) {}
+         void set_offset(std::ranges::range_difference_t<Base>) {}
 
          std::ranges::range_difference_t<Base> get_offset() {
             return 0;
@@ -88,7 +88,6 @@ namespace tl {
          using Base = std::conditional_t<Const, const V, V>;
 
       public:
-         using iterator_category = typename std::ranges::iterator_t<Base>::iterator_category; //TODO use iterator_traits
          using reference = std::ranges::range_reference_t<Base>;
          using value_type = std::ranges::range_value_t<Base>;
          using difference_type = std::ranges::range_difference_t<Base>;
@@ -135,14 +134,14 @@ namespace tl {
             x *= this->stride_;
 
             if (x > 0) {
-               auto delta = std::advance(this->current_, x, last);
+               auto delta = std::ranges::advance(this->current_, x, last);
                this->set_offset(delta);
             }
             else if (x < 0) {
                if (this->current_ == last) {
                   x += this->get_offset();
                }
-               std::advance(this->current, x);
+               std::ranges::advance(this->current_, x);
             }
          }
 

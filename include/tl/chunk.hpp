@@ -236,4 +236,9 @@ namespace tl {
    }
 }
 
+namespace std::ranges {
+   template <class R>
+   inline constexpr bool enable_borrowed_range<tl::chunk_view<R>> = enable_borrowed_range<R>;
+}
+
 #endif

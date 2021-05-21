@@ -44,7 +44,7 @@ namespace tl {
          fake_input_iterator& operator++();
          fake_input_iterator operator++(int);
          fake_input_iterator() = default;
-         friend bool operator==(fake_input_iterator a, fake_input_iterator b);
+         friend bool operator==(fake_input_iterator a, fake_input_iterator b) { return false; }
       };
 
       template <template <typename...> typename C, std::ranges::input_range R, typename... Args>

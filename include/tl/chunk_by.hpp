@@ -26,10 +26,8 @@ namespace tl {
          std::ranges::iterator_t<constify<V>> end_of_current_range_;
          constify<chunk_by_view>* parent_;
 
-         using value_type = std::ranges::subrange<std::ranges::iterator_t<V>>;
-         using pointer_type = value_type*;
-         using iterator_category = std::forward_iterator_tag;
-
+         //When the cursor is constructed or advanced then we'll calculate the end of the current range
+         //by walking over the range until we find an adjacent pair that returns false for the predicate.
          void find_end_of_current_range() {
             auto first_failed = std::adjacent_find(current_, std::end(parent_->base_), std::not_fn(*parent_->func_));
             end_of_current_range_ = std::ranges::next(first_failed, 1, std::end(parent_->base_));
@@ -41,6 +39,7 @@ namespace tl {
             find_end_of_current_range();
          }
 
+         //const-converting constructor
          constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
             std::ranges::iterator_t<V>,
             std::ranges::iterator_t<const V>>
