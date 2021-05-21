@@ -5,6 +5,11 @@
 #include <optional>
 
 namespace tl {
+   //A semiregular box is a wrapper used for storing non-default-initializable or assignable types in views.
+   //It's commonly used for storing invocables.
+   //It's pretty much the same as std::optional, but default-initializing it will default-initialize a T
+   //rather than leaving the box empty, and assignment can also be done by emplacing rather than assigning
+   //the stored T.
    template<std::copy_constructible T>
    requires std::is_object_v<T>
       class semiregular_box : public std::optional<T> {

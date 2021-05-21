@@ -16,6 +16,7 @@ namespace tl {
    template<class... Ts>
    using tuple_or_pair = detail::tuple_or_pair_impl<Ts...>::type;
 
+   //Call f on every element of the tuple, returning a new one
    template<class F, class Tuple>
    constexpr auto tuple_transform(F&& f, Tuple&& tuple)
    {
