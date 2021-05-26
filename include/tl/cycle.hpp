@@ -4,6 +4,7 @@
 #include <iterator>
 #include <ranges>
 #include <type_traits>
+#include "functional/pipeable.hpp"
 #include "basic_iterator.hpp"
 
 namespace tl {
@@ -104,21 +105,17 @@ namespace tl {
 
    namespace views {
       namespace detail {
-         class cycle_fn {
-         public:
+         struct cycle_fn {
             template <std::ranges::viewable_range V>
-            constexpr auto operator()(V&& v) const {
-               return tl::cycle_view{ std::forward<V>(v) };
-            }
-
-            template <std::ranges::viewable_range V>
-            friend constexpr auto operator|(V&& v, cycle_fn) {
+            constexpr auto operator()(V&& v) const 
+            requires (std::ranges::forward_range<V> && 
+               (std::ranges::common_range<V> || !std::ranges::bidirectional_range<V>)) {
                return tl::cycle_view{ std::forward<V>(v) };
             }
          };
       }  // namespace detail
 
-      inline constexpr detail::cycle_fn cycle;
+      inline constexpr auto cycle = pipeable(detail::cycle_fn{});
    }  // namespace views
 }  // namespace tl
 

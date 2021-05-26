@@ -6,6 +6,8 @@
 #include "common.hpp"
 #include "basic_iterator.hpp"
 #include "utility/semiregular_box.hpp"
+#include "functional/bind.hpp"
+#include "functional/pipeable.hpp"
 
 namespace tl {
    template <std::ranges::input_range V, std::invocable<std::ranges::range_reference_t<V>> F>
@@ -110,20 +112,20 @@ namespace tl {
 
    namespace views {
       namespace detail {
-         template <class F>
-         struct transform_maybe_closure {
-            F f;
-
-            template <std::ranges::forward_range R>
-            friend constexpr auto operator|(R&& r, transform_maybe_closure&& c) {
-               return transform_maybe_view(std::forward<R>(r), std::move(c.f));
+         struct transform_maybe_fn_base {
+            template <std::ranges::viewable_range R, class F>
+            constexpr auto operator()(R&& r, F f) const 
+            requires (std::ranges::input_range<R>, std::invocable<F, std::ranges::range_reference_t<R>>) {
+               return transform_maybe_view(std::forward<R>(r), std::move(f));
             }
          };
 
-         struct transform_maybe_fn {
+         struct transform_maybe_fn : transform_maybe_fn_base {
+            using transform_maybe_fn_base::operator(); 
+
             template <class F>
             constexpr auto operator()(F f) const {
-               return transform_maybe_closure<F>{ std::move(f) };
+               return pipeable(bind_back(transform_maybe_fn_base{}, std::move(f)));
             }
          };
       }

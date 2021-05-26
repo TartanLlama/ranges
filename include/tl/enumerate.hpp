@@ -6,6 +6,7 @@
 #include <type_traits>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "functional/pipeable.hpp"
 
 namespace tl {
    template <std::ranges::input_range V>
@@ -78,7 +79,7 @@ namespace tl {
             return current_ == rhs.end();
          }
 
-         constexpr auto distance_to(const cursor& rhs) const 
+         constexpr auto distance_to(const cursor& rhs) const
             requires std::sized_sentinel_for<std::ranges::iterator_t<Base>, std::ranges::iterator_t<Base>> {
             return rhs.current_ - current_;
          }
@@ -106,7 +107,7 @@ namespace tl {
          return basic_sentinel<V, false>{std::ranges::end(base_)};
       }
 
-      constexpr auto end() requires (!simple_view<V> && am_common<V>) {
+      constexpr auto end() requires (!simple_view<V>&& am_common<V>) {
          return basic_iterator{ cursor<false>{
             std::ranges::end(base_),
                static_cast<std::ranges::range_difference_t<V>>(size())} };
@@ -143,18 +144,14 @@ namespace tl {
          class enumerate_fn {
          public:
             template <std::ranges::viewable_range V>
-            constexpr auto operator()(V&& v) const {
-               return tl::enumerate_view{ std::forward<V>(v) };
-            }
-
-            template <std::ranges::viewable_range V>
-            friend constexpr auto operator|(V&& v, enumerate_fn) {
+            constexpr auto operator()(V&& v) const
+               requires std::ranges::input_range<V> {
                return tl::enumerate_view{ std::forward<V>(v) };
             }
          };
       }  // namespace detail
 
-      inline constexpr detail::enumerate_fn enumerate;
+      inline constexpr auto enumerate = pipeable(detail::enumerate_fn{});
    }  // namespace views
 }  // namespace tl
 

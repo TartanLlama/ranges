@@ -5,6 +5,8 @@
 #include <iterator>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "functional/pipeable.hpp"
+#include "functional/bind.hpp"
 
 namespace tl {
    template <std::ranges::forward_range V>
@@ -209,25 +211,20 @@ namespace tl {
 
    namespace views {
       namespace detail {
-         template <class N>
-         struct chunk_closure {
-            N n;
-
-            template <std::ranges::forward_range R>
-            friend constexpr auto operator|(R&& r, chunk_closure&& c) {
-               return chunk_view(std::forward<R>(r), c.n);
+         struct chunk_fn_base {
+            template <std::ranges::viewable_range R, std::integral N>
+            constexpr auto operator()(R&& r, N n) const 
+            requires std::ranges::forward_range<R> {
+               return chunk_view( std::forward<R>(r),  n );
             }
          };
 
-         struct chunk_fn {
+         struct chunk_fn : chunk_fn_base {
+            using chunk_fn_base::operator();
+
             template <std::integral N>
             constexpr auto operator()(N n) const {
-               return chunk_closure<N>{ n };
-            }
-
-            template <std::ranges::forward_range R, std::integral N>
-            constexpr auto operator()(R&& r, N n) const {
-               return chunk_view{ std::forward<R>(r),  n };
+               return pipeable(bind_back(chunk_fn_base{}, n));
             }
          };
       }

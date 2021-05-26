@@ -6,6 +6,7 @@
 
 TEST_CASE("cycle") {
    std::vector<int> a{ 0, 1, 2 };
+
    int i = 0;
    for (auto&& item : a | tl::views::cycle | std::views::take(20)) {
       REQUIRE(item == (i % 3));

@@ -6,6 +6,8 @@
 #include <type_traits>
 #include "common.hpp"
 #include "basic_iterator.hpp"
+#include "functional/pipeable.hpp"
+#include "functional/bind.hpp"
 
 namespace tl {
    template <std::ranges::input_range V>
@@ -209,26 +211,20 @@ namespace tl {
 
    namespace views {
       namespace detail {
-         template <std::integral D>
-         struct stride_view_closure {
-            D stride_;
-
+         struct stride_fn_base {
             template <std::ranges::viewable_range V>
-            friend constexpr auto operator|(V&& v, stride_view_closure const& clos) {
-               return tl::stride_view{ std::forward<V>(v), clos.stride_ };
+            constexpr auto operator()(V&& v, std::ranges::range_difference_t<V> d) const
+            requires std::ranges::input_range<V> {
+               return tl::stride_view{ std::forward<V>(v), d };
             }
          };
 
-         class stride_fn {
-         public:
-            template <std::ranges::viewable_range V>
-            constexpr auto operator()(V&& v, std::ranges::range_difference_t<V> d) const {
-               return tl::stride_view{ std::forward<V>(v), d };
-            }
+         struct stride_fn : stride_fn_base {
+            using stride_fn_base::operator(); 
 
             template <std::integral D>
             constexpr auto operator()(D d) const {
-               return stride_view_closure<D>(d);
+               return pipeable(bind_back(stride_fn_base{}, d));
             }
          };
       }  // namespace detail

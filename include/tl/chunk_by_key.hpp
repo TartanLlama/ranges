@@ -7,6 +7,8 @@
 #include "common.hpp"
 #include "basic_iterator.hpp"
 #include "utility/semiregular_box.hpp"
+#include "functional/bind.hpp"
+#include "functional/pipeable.hpp"
 
 namespace tl {
    template <std::ranges::forward_range V, std::invocable<std::ranges::range_reference_t<V>> F>
@@ -105,20 +107,20 @@ namespace tl {
 
    namespace views {
       namespace detail {
-         template <class F>
-         struct chunk_by_key_closure {
-            F f;
-
-            template <std::ranges::forward_range R>
-            friend constexpr auto operator|(R&& r, chunk_by_key_closure&& c) {
-               return chunk_by_key_view(std::forward<R>(r), std::move(c.f));
+         struct chunk_by_key_fn_base {
+            template <std::ranges::viewable_range R, std::invocable<std::ranges::range_reference_t<R>> F>
+            constexpr auto operator()(R&& r, F f) const 
+               requires std::ranges::forward_range<R> {
+               return chunk_by_key_view(std::forward<R>(r), std::move(f));
             }
          };
 
-         struct chunk_by_key_fn {
+         struct chunk_by_key_fn : chunk_by_key_fn_base {
+            using chunk_by_key_fn_base::operator(); 
+
             template <class F>
             constexpr auto operator()(F f) const {
-               return chunk_by_key_closure<F>{ std::move(f) };
+               return pipeable(bind_back(chunk_by_key_fn_base{}, std::move(f)));
             }
          };
       }

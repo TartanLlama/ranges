@@ -1,9 +1,10 @@
 
 #include "tl/enumerate.hpp"
+#include "tl/functional/pipeable.hpp"
 #include <catch2/catch.hpp>
 #include <iostream>
 #include <vector>
-template<class> struct TC;
+
 TEST_CASE("basic vector") {
   std::vector a{1, 2, 3};
   int i = 0;
@@ -55,7 +56,8 @@ TEST_CASE("modify vector") {
 }
 
 TEST_CASE("issue #2") {
-   for (auto&& [i, j] : (std::views::iota(0) | tl::views::enumerate | std::views::take(10))) {
+   auto f = tl::views::enumerate | tl::pipeable(std::views::take(10));
+   for (auto&& [i, j] : (std::views::iota(0) | f)) {
       REQUIRE(i == j);
    }
 }

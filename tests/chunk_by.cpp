@@ -47,6 +47,7 @@ TEST_CASE("group_by pipe") {
 
    int group_id = 0;
    int i = 0;
+   tl::views::chunk_by([](auto&& left, auto&& right) { return left.age == right.age; })(dogs);
    for (auto&& group : dogs | tl::views::chunk_by([](auto&& left, auto&& right) { return left.age == right.age; })) {
       for (auto&& d : group) {
          switch (i) {
