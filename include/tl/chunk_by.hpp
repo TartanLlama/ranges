@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "basic_iterator.hpp"
 #include "utility/semiregular_box.hpp"
+#include "utility/non_propagating_cache.hpp"
 #include "functional/bind.hpp"
 #include "functional/pipeable.hpp"
 
@@ -18,80 +19,68 @@ namespace tl {
          V base_;
          //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
          [[no_unique_address]] semiregular_box<F> func_;
+         //Need to cache the end of the first group so that begin is amortized O(1)
+         non_propagating_cache<std::ranges::iterator_t<V>> end_of_first_group_;
 
-         template <bool Const>
-         struct cursor {
-            template <class T>
-            using constify = std::conditional_t<Const, const T, T>;
+         //The first time we call begin or when a cursor is advanced we calculate the end of the current range
+         //by walking over the range until we find an adjacent pair that returns false for the predicate.
+         constexpr std::ranges::iterator_t<V> find_end_of_current_range(std::ranges::iterator_t<V> it) {
+            auto first_failed = std::adjacent_find(it, std::ranges::end(base_), std::not_fn(*func_));
+            return std::ranges::next(first_failed, 1, std::ranges::end(base_));
+         }
 
-            std::ranges::iterator_t<constify<V>> current_;
-            std::ranges::iterator_t<constify<V>> end_of_current_range_;
-            constify<chunk_by_view>* parent_;
-
-            //When the cursor is constructed or advanced then we'll calculate the end of the current range
-            //by walking over the range until we find an adjacent pair that returns false for the predicate.
-            void find_end_of_current_range() {
-               auto first_failed = std::adjacent_find(current_, std::end(parent_->base_), std::not_fn(*parent_->func_));
-               end_of_current_range_ = std::ranges::next(first_failed, 1, std::end(parent_->base_));
+         constexpr auto get_end_of_first_group() {
+            if (!end_of_first_group_) {
+               end_of_first_group_ = find_end_of_current_range(std::ranges::begin(base_));
             }
+            return *end_of_first_group_;
+         }
+
+         struct sentinel {
+            std::ranges::sentinel_t<V> end_;
+            sentinel() = default;
+            constexpr sentinel(std::ranges::sentinel_t<V> end) : end_(std::move(end)) {}
+         };
+
+         struct cursor {
+            std::ranges::iterator_t<V> current_;
+            std::ranges::iterator_t<V> end_of_current_range_;
+            chunk_by_view* parent_;
 
             cursor() = default;
-            constexpr cursor(std::ranges::iterator_t<constify<V>> current, constify<chunk_by_view>* parent)
-               : current_(std::move(current)), parent_(parent) {
-               find_end_of_current_range();
+            constexpr cursor(std::ranges::iterator_t<V> begin, std::ranges::iterator_t<V> end_of_first_group, chunk_by_view* parent)
+               : current_(std::move(begin)), end_of_current_range_(std::move(end_of_first_group)), parent_(parent) {
             }
-
-            //const-converting constructor
-            constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
-               std::ranges::iterator_t<V>,
-               std::ranges::iterator_t<const V>>
-               : current_{ std::move(i.current_) }, end_of_current_range_{ std::move(i.end_of_current_range_) },
-               parent_(i.parent_){}
 
             constexpr auto read() const {
                return std::ranges::subrange{ current_, end_of_current_range_ };
             }
 
             constexpr void next() {
-               current_ = end_of_current_range_;
-               find_end_of_current_range();
+               current_ = std::exchange(end_of_current_range_, parent_->find_end_of_current_range(end_of_current_range_));
             }
 
             constexpr bool equal(cursor const& rhs) const {
                return current_ == rhs.current_;
             }
-            constexpr bool equal(basic_sentinel<V, Const> const& rhs) const {
-               return current_ == rhs.end();
+            constexpr bool equal(sentinel const& rhs) const {
+               return current_ == rhs.end_;
             }
-
-            friend struct cursor<!Const>;
          };
 
       public:
          chunk_by_view() = default;
          chunk_by_view(V v, F f) : base_(std::move(v)), func_(std::move(f)) {}
 
-         constexpr auto begin() requires (!simple_view<V>) {
-            return basic_iterator{ cursor<false>{ std::ranges::begin(base_), this } };
+         constexpr auto begin() {
+            return basic_iterator{ cursor{ std::ranges::begin(base_), get_end_of_first_group(), this } };
          }
 
-         constexpr auto begin() const requires (std::ranges::range<const V>) {
-            return basic_iterator{ cursor<true>{ std::ranges::begin(base_), this } };
-         }
-
-         constexpr auto end() requires(!simple_view<V>) {
-            return basic_sentinel<V, false>{std::ranges::end(base_)};
-         }
-
-         constexpr auto end() const requires std::ranges::range<const V> {
-            return basic_sentinel<V, true>{std::ranges::end(base_)};
+         constexpr auto end() {
+            return sentinel{std::ranges::end(base_)};
          }
 
          auto& base() {
-            return base_;
-         }
-
-         auto const& base() const {
             return base_;
          }
    };
