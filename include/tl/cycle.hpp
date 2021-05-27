@@ -9,8 +9,17 @@
 
 namespace tl {
    template <std::ranges::forward_range V>
-   requires (std::ranges::view<V> && (std::ranges::common_range<V> || !std::ranges::bidirectional_range<V>)) class cycle_view
+   requires (std::ranges::view<V>) class cycle_view
       : public std::ranges::view_interface<cycle_view<V>> {
+      //We need to be able to get to end from begin in O(1).
+      template <class T>
+      static constexpr bool am_bidirectional = (std::ranges::bidirectional_range<T> &&
+         (std::ranges::common_range<T> || (std::ranges::sized_range<T> && std::ranges::random_access_range<T>)));
+
+      //Need to be able to calculate offset modulo the size of the range.
+      template <class T>
+      static constexpr bool am_random_access = (std::ranges::random_access_range<T> && std::ranges::sized_range<T>);
+
       V base_;
 
       template <bool Const>
@@ -52,17 +61,17 @@ namespace tl {
             }
          }
 
-         constexpr void prev() requires std::ranges::bidirectional_range<Base> {
+         constexpr void prev() requires am_bidirectional<Base> {
             if (current_ == std::ranges::begin(*base_)) {
                current_ = std::ranges::end(*base_);
             }
             --current_;
          }
      
-         constexpr void advance(difference_type x) requires std::ranges::random_access_range<Base> {
+         constexpr void advance(difference_type x) requires am_random_access<Base> {
             auto begin = std::ranges::begin(*base_);
             auto end = std::ranges::end(*base_);
-            auto size = end - begin;
+            auto size = std::ranges::size(*base_);
             auto distance_from_begin = current_ - begin;
             auto offset = (distance_from_begin + x) % size;
             current_ = begin + static_cast<difference_type>(offset < 0 ? offset + size : offset);
@@ -92,7 +101,7 @@ namespace tl {
          return basic_iterator{ cursor<true>(std::ranges::begin(base_), std::addressof(base_)) };
       }
 
-      constexpr auto end() { return std::unreachable_sentinel; }
+      constexpr auto end() const { return std::unreachable_sentinel; }
 
       constexpr V base() const& requires std::copy_constructible<V> {
          return base_;
