@@ -11,7 +11,7 @@ requires(std::regular_invocable<F,
    std::ranges::range_reference_t<Vs>...>)
    auto find_tuples_satisfying(F f, Vs&&... vs) {
    return tl::views::cartesian_product(std::forward<Vs>(vs)...)
-      | std::views::filter(tl::curry(f))
+      | std::views::filter(tl::uncurry(f))
       | tl::to<std::vector>();
 }
 
