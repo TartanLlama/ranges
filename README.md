@@ -28,7 +28,7 @@ requires(std::regular_invocable<F,
           std::ranges::range_reference_t<Vs>...>)
 auto find_tuples_satisfying(F f, Vs&&... vs) {
   return tl::views::cartesian_product(std::forward<Vs>(vs)...) 
-    | std::views::filter([f](auto&& tuple) { return std::apply(f, tuple); })
+    | std::views::filter(tl::curry(f))
     | tl::to<std::vector>();
 }
 ```
@@ -100,6 +100,15 @@ auto vec2 = tl::to<std::vector<std::deque<double>>>(lst);
 auto h = tl::compose(f,g); //h(args...) calls f(g(args...))
 auto fp = tl::bind_back(f, n, m); //fp(args...) calls f(args..., n, m)
 
+//Use tl::curry to adapt a function into one which takes its arguments from a pair/tuple
+std::vector<int> a { 0, 42, 69 };
+std::vector<int> b { 18, 64, 69 };
+auto v = tl::views::zip(a,b) 
+       | std::views::filter(tl::curry(std::ranges::equal_to{}))
+       | tl::to<std::vector>();
+//v == {(69,69)}       
+       
+//Use tl::pipeable to make a partially-applied range adaptor pipeable to one from the standard library
 auto enumerate_reverse = tl::views::enumerate | tl::pipeable(std::views::reverse);
 for (auto e : my_vec | enumerate_reverse) {
     //...
