@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <tuple>
 #include <utility>
+#include <functional>
 
 namespace tl {
    //If the size of Ts is 2, returns pair<Ts...>, otherwise returns tuple<Ts...>
