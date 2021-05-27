@@ -4,6 +4,7 @@
 #include <ranges>
 #include "basic_iterator.hpp"
 #include "functional/pipeable.hpp"
+#include "utility/non_propagating_cache.hpp"
 
 namespace tl {
    template <std::ranges::input_range V>
@@ -11,7 +12,7 @@ namespace tl {
       struct cache_latest_view
       : public std::ranges::view_interface<cache_latest_view<V>> {
       V base_;
-      std::optional<std::ranges::range_value_t<V>> cache_ = std::nullopt;
+      non_propagating_cache<std::ranges::range_value_t<V>> cache_ = std::nullopt;
       bool dirty_ = true;
 
       template <class T>

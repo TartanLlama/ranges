@@ -436,7 +436,7 @@ namespace tl {
             noexcept(++std::declval<basic_iterator&>()))
          requires (!cursor::single_pass<C>) {
          auto temp = *this;
-         ++temp;
+         ++*this;
          return temp;
       }
 

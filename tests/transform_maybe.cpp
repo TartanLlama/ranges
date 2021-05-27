@@ -11,3 +11,17 @@ TEST_CASE("transform_maybe") {
       REQUIRE(i == e);
    }
 }
+
+TEST_CASE("bidirectional") {
+   std::vector<int> a{ 0,1,2,3,4 };
+   auto f = [](auto i) { return (i % 2 == 0) ? std::optional(i / 2) : std::nullopt; };
+
+   auto r = a | tl::views::transform_maybe(f);
+   auto it = r.begin();
+   REQUIRE(*it++ == 0);
+   REQUIRE(*it++ == 1);
+   REQUIRE(*it++ == 2);
+   REQUIRE(*--it == 2);
+   REQUIRE(*--it == 1);
+   REQUIRE(*++it == 2);
+}
