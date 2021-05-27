@@ -3,6 +3,8 @@
 
 #include <functional>
 
+//tl::compose composes f and g such that compose(f,g)(args...) is f(g(args...)), i.e. g is called first
+
 namespace tl {
    template <class F, class G>
    struct compose_fn {

@@ -5,6 +5,10 @@
 #include <utility>
 #include "compose.hpp"
 
+//tl::pipeable takes some invocable and enables:
+//- Piping a single argument to it such that a | pipeable is the same as pipeable(a)
+//- Piping it to another pipeable object, such that a | b is the same as tl::compose(b, a)
+
 namespace tl {
    struct pipeable_base {};
    template <class T>
