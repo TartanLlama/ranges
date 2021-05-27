@@ -28,7 +28,7 @@ requires(std::regular_invocable<F,
           std::ranges::range_reference_t<Vs>...>)
 auto find_tuples_satisfying(F f, Vs&&... vs) {
   return tl::views::cartesian_product(std::forward<Vs>(vs)...) 
-    | std::views::filter([f](auto&& tuple) { return std::apply(f, tuple); });)
+    | std::views::filter([f](auto&& tuple) { return std::apply(f, tuple); })
     | tl::to<std::vector>();
 }
 ```
