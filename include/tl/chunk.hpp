@@ -1,5 +1,5 @@
-#ifndef TL_RANGES_CHUNK
-#define TL_RANGES_CHUNK
+#ifndef TL_RANGES_CHUNK_HPP
+#define TL_RANGES_CHUNK_HPP
 
 #include <ranges>
 #include <iterator>
@@ -21,7 +21,7 @@ namespace tl {
       template <class T> static constexpr bool am_sized = std::ranges::sized_range<T>;
 
       V base_;
-      std::ranges::range_size_t<V> chunk_size_;
+      std::ranges::range_difference_t<V> chunk_size_;
 
       //The cursor for chunk_view may need to keep track of additional state.
       //Consider the case where you have a vector of 0,1,2 and you chunk with a size of 2.
@@ -85,24 +85,21 @@ namespace tl {
          using constify = std::conditional_t<Const, const T, T>;
          using Base = constify<V>;
 
-         using value_type = std::ranges::subrange<std::ranges::iterator_t<V>>;
-         using pointer_type = value_type*;
-         using iterator_category = std::forward_iterator_tag;
          using difference_type = std::ranges::range_difference_t<Base>;
 
          std::ranges::iterator_t<Base> current_{};
          std::ranges::sentinel_t<Base> end_{};
-         std::ranges::range_size_t<Base> chunk_size_{};
+         std::ranges::range_difference_t<Base> chunk_size_{};
 
          cursor() = default;
          
          //Pre-calculate the offset for sized ranges
-         constexpr cursor(std::ranges::iterator_t<Base> begin, Base* base, std::ranges::range_size_t<Base> chunk_size)
+         constexpr cursor(std::ranges::iterator_t<Base> begin, Base* base, std::ranges::range_difference_t<Base> chunk_size)
             requires(std::ranges::sized_range<Base>)
             : cursor_base<Const>(chunk_size - (std::ranges::size(*base) % chunk_size)),
             current_(std::move(begin)), end_(std::ranges::end(*base)), chunk_size_(chunk_size) {}
 
-         constexpr cursor(std::ranges::iterator_t<Base> begin, Base* base, std::ranges::range_size_t<Base> chunk_size)
+         constexpr cursor(std::ranges::iterator_t<Base> begin, Base* base, std::ranges::range_difference_t<Base> chunk_size)
             requires(!std::ranges::sized_range<Base>)
             : cursor_base<Const>(), current_(std::move(begin)), end_(std::ranges::end(*base)), chunk_size_(chunk_size) {}
 
@@ -163,7 +160,7 @@ namespace tl {
 
    public:
       chunk_view() = default;
-      chunk_view(V v, std::ranges::range_size_t<V> n) : base_(std::move(v)), chunk_size_(n) {}
+      chunk_view(V v, std::ranges::range_difference_t<V> n) : base_(std::move(v)), chunk_size_(n) {}
 
       constexpr auto begin() requires (!simple_view<V>) {
          return basic_iterator{ cursor<false>{ std::ranges::begin(base_), std::addressof(base_), chunk_size_ } };
@@ -212,8 +209,8 @@ namespace tl {
    namespace views {
       namespace detail {
          struct chunk_fn_base {
-            template <std::ranges::viewable_range R, std::integral N>
-            constexpr auto operator()(R&& r, N n) const 
+            template <std::ranges::viewable_range R>
+            constexpr auto operator()(R&& r, std::ranges::range_difference_t<R> n) const 
             requires std::ranges::forward_range<R> {
                return chunk_view( std::forward<R>(r),  n );
             }
