@@ -21,6 +21,7 @@ namespace tl {
       //Need to cache begin so that begin(transform_maybe_view) is amortized O(1)
       non_propagating_cache<std::ranges::iterator_t<V>> begin_;
 
+      //Work out which is the first element which returns an engaged optional and cache it
       auto get_begin() {
          if (begin_) return *begin_;
 
@@ -57,6 +58,7 @@ namespace tl {
             return *cache_;
          }
 
+         //Walk forward until we find end, or element which returns an engaged optional and cache the result
          void next() {
             decltype(cache_) result = std::nullopt;
             do {
@@ -67,6 +69,7 @@ namespace tl {
             cache_ = std::move(result);
          }
 
+         //Walk backwards until we find begin, or element which returns an engaged optional and cache the result
          void prev() {
             decltype(cache_) result = std::nullopt;
             do {
