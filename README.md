@@ -100,11 +100,11 @@ auto vec2 = tl::to<std::vector<std::deque<double>>>(lst);
 auto h = tl::compose(f,g); //h(args...) calls f(g(args...))
 auto fp = tl::bind_back(f, n, m); //fp(args...) calls f(args..., n, m)
 
-//Use tl::curry to adapt a function into one which takes its arguments from a pair/tuple
+//Use tl::uncurry to adapt a function into one which takes its arguments from a pair/tuple
 std::vector<int> a { 0, 42, 69 };
 std::vector<int> b { 18, 64, 69 };
 auto v = tl::views::zip(a,b) 
-       | std::views::filter(tl::curry(std::ranges::equal_to{}))
+       | std::views::filter(tl::uncurry(std::ranges::equal_to{}))
        | tl::to<std::vector>();
 //v == {(69,69)}       
        
