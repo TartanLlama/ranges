@@ -3,13 +3,6 @@
 #include <ranges>
 #include <vector>
 
-template <class C>
-struct tags {
-   static constexpr auto single_pass() requires requires { { C::single_pass } -> std::convertible_to<bool>; } {
-      return C::single_pass;
-   }
-};
-
 TEST_CASE("weaken") {
    std::vector a{ 0,1,2 };
   
