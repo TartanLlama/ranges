@@ -34,12 +34,12 @@ namespace tl {
       namespace detail {
          template <class C>
          struct tags {
-            static constexpr auto single_pass() requires requires { { C::single_pass } -> std::same_as<bool>; } {
+            static constexpr auto single_pass() requires requires { { C::single_pass } -> std::convertible_to<bool>; } {
                return C::single_pass;
             }
             static constexpr auto single_pass() { return false; }
 
-            static constexpr auto contiguous() requires requires { { C::contiguous } -> std::same_as<bool>; } {
+            static constexpr auto contiguous() requires requires { { C::contiguous } -> std::convertible_to<bool>; } {
                return C::contiguous;
             }
             static constexpr auto contiguous() { return false; }
@@ -184,7 +184,7 @@ namespace tl {
       struct not_a_cpp17_iterator {};
 
       template <class C>
-      concept reference_is_value_type_ref = 
+      concept reference_is_value_type_ref =
          (std::same_as<reference_t<C>, value_type_t<C>&> || std::same_as<reference_t<C>, value_type_t<C> const&>);
 
       template <class C>
@@ -410,14 +410,14 @@ namespace tl {
 
       //C++17 required that *it++ was valid.
       //For input iterators, we can't copy *this, so we need to create a proxy reference.
-      constexpr void operator++(int) &
+      constexpr auto operator++(int) &
          noexcept(noexcept(++std::declval<basic_iterator&>()) &&
             std::is_nothrow_move_constructible_v<value_type>&&
             std::is_nothrow_constructible_v<value_type, reference>)
          requires (cursor::single_pass<C>&&
             std::move_constructible<value_type>&&
             std::constructible_from<value_type, reference>) {
-         detail::post_increment_proxy p(**this);
+         detail::post_increment_proxy<value_type> p(**this);
          ++* this;
          return p;
       }
@@ -425,7 +425,8 @@ namespace tl {
       //If we can't create a proxy reference, it++ is going to return void
       constexpr void operator++(int) &
          noexcept(noexcept(++std::declval<basic_iterator&>()))
-         requires cursor::single_pass<C> {
+         requires (cursor::single_pass<C> && !(std::move_constructible<value_type>&&
+            std::constructible_from<value_type, reference>)) {
          (void)(++(*this));
       }
 
@@ -436,7 +437,7 @@ namespace tl {
             noexcept(++std::declval<basic_iterator&>()))
          requires (!cursor::single_pass<C>) {
          auto temp = *this;
-         ++*this;
+         ++* this;
          return temp;
       }
 
