@@ -20,8 +20,8 @@ namespace tl {
       using key_type = std::invoke_result_t<F, std::ranges::range_reference_t<V>>;
 
       V base_;
-      //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
-      [[no_unique_address]] semiregular_box<F> func_;
+      //Might need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
+      [[no_unique_address]] semiregular_storage_for<F> func_;
       //Need to cache the end of the first group so that begin is amortized O(1). Also cache the first key.
       non_propagating_cache<std::pair<key_type, std::ranges::iterator_t<V>>> first_group_info_;
 

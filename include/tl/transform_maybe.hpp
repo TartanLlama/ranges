@@ -16,8 +16,8 @@ namespace tl {
    class transform_maybe_view : public std::ranges::view_interface<transform_maybe_view<V,F>> {
    private:
       V base_;
-      //Need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
-      [[no_unique_address]] semiregular_box<F> func_;
+      //Might need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
+      [[no_unique_address]] semiregular_storage_for<F> func_;
       //Need to cache begin so that begin(transform_maybe_view) is amortized O(1)
       non_propagating_cache<std::ranges::iterator_t<V>> begin_;
 

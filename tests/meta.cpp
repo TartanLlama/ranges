@@ -10,5 +10,5 @@ TEST_CASE("repeat_into") {
 }
 
 TEST_CASE("adjacent") {
-   STATIC_REQUIRE(std::same_as<repeat_into<int, 2, partial<std::tuple, const int&>::template type>, std::tuple<const int&, int, int>>);
+   STATIC_REQUIRE(std::same_as<repeat_into<int, 2, partial<std::tuple, const int&>::template apply>::type, std::tuple<const int&, int, int>>);
 }

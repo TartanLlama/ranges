@@ -19,6 +19,7 @@ namespace tl {
       std::regular_invocable<F&, std::ranges::range_reference_t<Views>...>&&
       detail::can_reference<std::invoke_result_t<F&, std::ranges::range_reference_t<Views>...>>
       class zip_transform_view : public std::ranges::view_interface<zip_transform_view<F, Views...>> {
+      //Might need to wrap F in a semiregular_box to ensure the view is moveable and default-initializable
       [[no_unique_address]] semiregular_storage_for<F> fun_;
       zip_view<Views...> zip_;
 

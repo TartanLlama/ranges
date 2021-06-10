@@ -17,7 +17,9 @@ namespace tl {
       template <template <class...> class T, class... Args>
       struct partial {
          template <class... MoreArgs>
-         using type = T<Args..., MoreArgs...>;
+         struct apply {
+            using type = T<Args..., MoreArgs...>;
+         };
       };
 
       namespace detail {
