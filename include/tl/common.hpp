@@ -33,10 +33,11 @@ namespace tl {
       std::same_as<std::ranges::sentinel_t<R>,
       std::ranges::sentinel_t<const R>>;
 
-   struct begin_tag_t {};
-   constexpr inline begin_tag_t begin_tag;
-   struct end_tag_t {};
-   constexpr inline end_tag_t end_tag;
+   struct as_sentinel_t {};
+   constexpr inline as_sentinel_t as_sentinel;
+
+   template <bool Const, class T>
+   using maybe_const = std::conditional_t<Const, const T, T>;
 }
 
 #endif

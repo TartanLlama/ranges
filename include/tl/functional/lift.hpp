@@ -4,10 +4,10 @@
 #include <functional>
 #define TL_LIFT(func) \
    [](auto&&... args) \
-      noexcept(noexcept(std::invoke(func, std::forward<decltype(args)>(args)...)))\
-      ->decltype (std::invoke(func, std::forward<decltype(args)>(args)...)) \
+      noexcept(noexcept(func(std::forward<decltype(args)>(args)...)))\
+      ->decltype (func(std::forward<decltype(args)>(args)...)) \
    {\
-      return std::invoke(func, std::forward<decltype(args)>(args)...);\
+      return func(std::forward<decltype(args)>(args)...);\
    }
 
 #endif

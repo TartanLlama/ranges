@@ -51,6 +51,15 @@ namespace tl {
             }
             return *this;
          }
+
+         template <class... Args>
+         constexpr decltype(auto) operator()(Args&&... args) const
+            requires std::invocable<T&, Args...> {
+            return std::invoke(this->get(), std::forward<Args>(args)...);
+         }
    };
+
+   template <class T>
+   using semiregular_storage_for = std::conditional_t<std::semiregular<T>, T, semiregular_box<T>>;
 }
 #endif

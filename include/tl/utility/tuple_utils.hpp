@@ -44,7 +44,7 @@ namespace tl {
       if constexpr (sizeof...(Tuples) > 1) {
          auto call_at_index = []<std::size_t Idx, class Fu, class... Ts>
             (tl::index_constant<Idx>, Fu f, Ts&&... tuples) {
-            return std::invoke(f, std::get<Idx>(std::forward<Ts>(tuples))...);
+            return f(std::get<Idx>(std::forward<Ts>(tuples))...);
          };
 
          constexpr auto min_size = tl::min_tuple(std::tuple(tl::tuple_size<Tuples>...));

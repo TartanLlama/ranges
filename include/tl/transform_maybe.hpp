@@ -47,11 +47,11 @@ namespace tl {
          std::remove_cvref_t<std::invoke_result_t<F, std::ranges::range_reference_t<V>>> cache_;
 
          cursor() = default;
-         constexpr cursor(begin_tag_t, transform_maybe_view* parent)
+         constexpr cursor(transform_maybe_view* parent)
             : current_(parent->get_begin()), parent_(parent) {
             cache_ = std::invoke(*parent_->func_, *current_);
          }
-         constexpr cursor(end_tag_t, transform_maybe_view* parent)
+         constexpr cursor(as_sentinel_t, transform_maybe_view* parent)
             : current_(std::ranges::end(parent->base_)), parent_(parent) {}
 
          auto const& read() const {
@@ -96,14 +96,14 @@ namespace tl {
       transform_maybe_view(V v, F f) : base_(std::move(v)), func_(std::move(f)) {}
 
       constexpr auto begin()  {
-         return basic_iterator{ cursor(begin_tag, this) };
+         return basic_iterator{ cursor(this) };
       }
 
       constexpr auto end() requires(am_common<V>) {
          //If the underlying range is bidirectional, then cursor::prev needs to get begin.
          //To make sure this is constant time, we should cache begin on the call to end.
          if constexpr (std::ranges::bidirectional_range<V>) get_begin();
-         return basic_iterator{ cursor(end_tag, this) };
+         return basic_iterator{ cursor(as_sentinel, this) };
       }
       constexpr auto end() requires (!am_common<V>) {
          //If the underlying range is not common then we don't have to cache begin here,

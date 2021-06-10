@@ -83,22 +83,22 @@ namespace tl {
          using difference_type = std::ptrdiff_t;
 
          cursor() = default;
-         constexpr explicit cursor(begin_tag_t, constify<std::tuple<Vs...>>* bases)
+         constexpr explicit cursor(constify<std::tuple<Vs...>>* bases)
             : bases_{ bases }, currents_( tl::tuple_transform(std::ranges::begin, *bases) )
          {}
 
          //If the underlying ranges are common, we can get to the end by assigning from end
-         constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
+         constexpr explicit cursor(as_sentinel_t, constify<std::tuple<Vs...>>* bases)
             requires(std::ranges::common_range<Vs> && ...)
-            : cursor{ begin_tag, bases }
+            : cursor{ bases }
          {
             std::get<0>(currents_) = std::ranges::end(std::get<0>(*bases_));
          }
 
          //If the underlying ranges are sized and random access, we can get to the end by moving it forward by size
-         constexpr explicit cursor(end_tag_t, constify<std::tuple<Vs...>>* bases)
+         constexpr explicit cursor(as_sentinel_t, constify<std::tuple<Vs...>>* bases)
             requires(!(std::ranges::common_range<Vs> && ...) && (std::ranges::random_access_range<Vs> && ...) && (std::ranges::sized_range<Vs> && ...))
-            : cursor{ begin_tag, bases }
+            : cursor{ bases }
          {
             std::get<0>(currents_) += std::ranges::size(std::get<0>(*bases_));
          }
@@ -208,18 +208,18 @@ namespace tl {
       explicit cartesian_product_view(Vs... bases) : bases_(std::move(bases)...) {}
 
       constexpr auto begin() requires (!(simple_view<Vs> && ...)) {
-         return basic_iterator{ cursor<false>(begin_tag, std::addressof(bases_)) };
+         return basic_iterator{ cursor<false>(std::addressof(bases_)) };
       }
       constexpr auto begin() const requires (std::ranges::range<const Vs> && ...) {
-         return basic_iterator{ cursor<true>(begin_tag, std::addressof(bases_)) };
+         return basic_iterator{ cursor<true>(as_sentinel, std::addressof(bases_)) };
       }
 
       constexpr auto end() requires (!(simple_view<Vs> && ...) && am_common<Vs...>) {
-         return basic_iterator{ cursor<false>(end_tag, std::addressof(bases_)) };
+         return basic_iterator{ cursor<false>(as_sentinel, std::addressof(bases_)) };
       }
 
       constexpr auto end() const requires (am_common<const Vs...>) {
-         return basic_iterator{ cursor<true>(end_tag, std::addressof(bases_)) };
+         return basic_iterator{ cursor<true>(as_sentinel, std::addressof(bases_)) };
       }
 
       constexpr auto end() requires(!(simple_view<Vs> && ...) && !am_common<Vs...>) {

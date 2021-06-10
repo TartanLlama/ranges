@@ -169,7 +169,7 @@ namespace tl {
                return {};
             }
             template <std::ranges::viewable_range... V>
-            requires ((std::ranges::forward_range<V> && ...) && (sizeof...(V) != 0))
+            requires ((std::ranges::input_range<V> && ...) && (sizeof...(V) != 0))
                constexpr auto operator()(V&&... vs) const {
                return tl::zip_view{ std::views::all(std::forward<V>(vs))... };
             }
