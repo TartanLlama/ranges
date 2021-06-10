@@ -29,8 +29,8 @@ namespace tl {
          if (!first_group_info_) {
             auto it = std::ranges::begin(base_);
             if (it != std::ranges::end(base_)) {
-               auto first_key = std::invoke(*func_, *it);
-               auto end_of_first_range = std::ranges::find_if(std::ranges::next(it), std::end(base_), [&](auto&& v) { return std::invoke(*func_, v) != first_key; });
+               auto first_key = std::invoke(func_, *it);
+               auto end_of_first_range = std::ranges::find_if(std::ranges::next(it), std::end(base_), [&](auto&& v) { return std::invoke(func_, v) != first_key; });
 
                first_group_info_ = std::pair(std::move(first_key), std::move(end_of_first_range));
             }
@@ -63,9 +63,9 @@ namespace tl {
             current_ = end_of_current_range_;
             if (current_ == std::ranges::end(parent_->base_)) return;
 
-            current_key_ = std::invoke(*parent_->func_, *current_);
+            current_key_ = std::invoke(parent_->func_, *current_);
             end_of_current_range_ = std::ranges::find_if(std::ranges::next(current_), std::ranges::end(parent_->base_), 
-               [this](auto&& v) { return std::invoke(*parent_->func_, v) != *current_key_; });
+               [this](auto&& v) { return std::invoke(parent_->func_, v) != *current_key_; });
          }
    
          constexpr bool equal(cursor const& rhs) const {

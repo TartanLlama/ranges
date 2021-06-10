@@ -25,7 +25,7 @@ namespace tl {
          //The first time we call begin or when a cursor is advanced we calculate the end of the current range
          //by walking over the range until we find an adjacent pair that returns false for the predicate.
          constexpr std::ranges::iterator_t<V> find_end_of_current_range(std::ranges::iterator_t<V> it) {
-            auto first_failed = std::adjacent_find(it, std::ranges::end(base_), std::not_fn(*func_));
+            auto first_failed = std::adjacent_find(it, std::ranges::end(base_), std::not_fn(func_));
             return std::ranges::next(first_failed, 1, std::ranges::end(base_));
          }
 

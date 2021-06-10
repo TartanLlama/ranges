@@ -26,7 +26,7 @@ namespace tl {
          if (begin_) return *begin_;
 
          auto it = std::ranges::begin(base_);
-         while (it != std::ranges::end(base_) && !std::invoke(*func_, *it)) {
+         while (it != std::ranges::end(base_) && !std::invoke(func_, *it)) {
             ++it;
          };
          begin_.emplace(std::move(it));
@@ -49,7 +49,7 @@ namespace tl {
          cursor() = default;
          constexpr cursor(transform_maybe_view* parent)
             : current_(parent->get_begin()), parent_(parent) {
-            cache_ = std::invoke(*parent_->func_, *current_);
+            cache_ = std::invoke(parent_->func_, *current_);
          }
          constexpr cursor(as_sentinel_t, transform_maybe_view* parent)
             : current_(std::ranges::end(parent->base_)), parent_(parent) {}
@@ -64,7 +64,7 @@ namespace tl {
             do {
                ++current_;
                if (current_ == std::ranges::end(parent_->base_)) return;
-               result = std::invoke(*parent_->func_, *current_);
+               result = std::invoke(parent_->func_, *current_);
             } while (!result);
             cache_ = std::move(result);
          }
@@ -75,7 +75,7 @@ namespace tl {
             do {
                --current_;
                if (current_ == parent_->get_begin()) return;
-               result = std::invoke(*parent_->func_, *current_);
+               result = std::invoke(parent_->func_, *current_);
             } while (!result);
             cache_ = std::move(result);
          }
