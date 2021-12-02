@@ -14,10 +14,13 @@ TEST_CASE("adjacent") {
       {4,5,6}
    };
 
-   for (auto [a,b] : tl::views::zip(tl::views::adjacent<3>(a), results)) {
+   REQUIRE(tl::views::adjacent<3>(a).size() == 5);
+
+   for (auto const& [a,b] : tl::views::zip(tl::views::adjacent<3>(a), results)) {
       REQUIRE(a == b);
    }
 }
+
 
 TEST_CASE("pairwise") {
    std::vector<int> a{ 0,1,2,3 };
@@ -32,3 +35,4 @@ TEST_CASE("pairwise") {
       REQUIRE(a.second == b.second);
    }
 }
+
