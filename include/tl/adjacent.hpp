@@ -12,84 +12,93 @@ namespace tl {
     template<std::ranges::forward_range V, std::size_t N>
         requires std::ranges::view<V> && (N > 0)
     class adjacent_view : public std::ranges::view_interface<adjacent_view<V, N>> {
-        V base_ = V();
+        V base_{};
 
         template<bool Const>
         class cursor {
             using Base = maybe_const<Const, V>;
+            using Diff = std::ranges::range_difference_t<Base>;
+            // invariant: ranges::distance(base_) < N and first_ == last_ == ranges::end(base_), or
+            // ranges::distance(base_) >= N and next(first_, N - 1) == last_
+            std::ranges::iterator_t<Base> first_{}, last_{};
 
         public:
-            std::array<std::ranges::iterator_t<Base>, N> current_ = std::array<std::ranges::iterator_t<Base>, N>();
-            
             using value_type = tl::meta::repeat_into<std::ranges::range_value_t<Base>, N, detail::tuple_or_pair_impl>::type;
 
             using difference_type = std::ranges::range_difference_t<Base>;
 
             cursor() = default;
             constexpr cursor(cursor<!Const> i)
-                requires Const&& std::convertible_to<std::ranges::iterator_t<V>, std::ranges::iterator_t<Base>> : current_(std::move(i.current_)) {}
+                requires Const && std::convertible_to<std::ranges::iterator_t<V>, std::ranges::iterator_t<Base>> :
+                first_(std::move(i.first_)),
+                last_(std::move(i.last_))
+            {}
 
-            constexpr cursor(std::ranges::iterator_t<Base> first, std::ranges::sentinel_t<Base> last) {
-                current_[0] = first;
-                for (auto i : std::views::iota(std::size_t(1), N)) {
-                    current_[i] = std::ranges::next(current_[i - 1], 1, last);
+            constexpr cursor(std::ranges::iterator_t<Base> first, std::ranges::sentinel_t<Base> const last) :
+                first_(first),
+                last_(std::move(first))
+            {
+                std::ranges::advance(last_, Diff{N} - 1, last);
+                if (last_ == last) {
+                    first_ = last_;
                 }
             }
-            constexpr cursor(as_sentinel_t, std::ranges::iterator_t<Base> first, std::ranges::iterator_t<Base> last) {
-                if constexpr (!std::ranges::bidirectional_range<Base>) {
-                    for (auto& it : current_) {
-                        it = last;
-                    }
-                }
-                else {
-                    current_[N - 1] = last;
-                    for (auto i : std::views::iota(std::size_t(1), N)) {
-                        current_[N - 1 - i] = std::ranges::prev(current_[N - i], 1, first);
+            constexpr cursor(as_sentinel_t, std::ranges::iterator_t<Base> first, std::ranges::iterator_t<Base> last) :
+                first_(last),
+                last_(std::move(last))
+            {
+                if constexpr (std::ranges::bidirectional_range<Base>) {
+                    if (auto remainder = std::ranges::advance(first_, -Diff{N} + 1, first)) {
+                        first_ = last_;
                     }
                 }
             }
 
             constexpr auto read() const {
-                return tuple_transform([](auto& i) -> decltype(auto) { return *i; }, current_);
+                return [i = first_]<std::size_t... Indices>(std::index_sequence<Indices...>) mutable {
+                    using Ref = tl::meta::repeat_into<
+                        std::ranges::range_reference_t<Base>, N, detail::tuple_or_pair_impl>::type;
+                    return Ref{((void) Indices, *i++)...};
+                }(std::make_index_sequence<N>{});
             }
 
             constexpr void next() {
-                std::ranges::copy(current_ | std::views::drop(1), current_.begin());
-                ++current_.back();
+                ++first_;
+                ++last_;
             }
 
             constexpr void prev() requires std::ranges::bidirectional_range<Base> {
-                std::ranges::copy_backward(current_ | std::views::take(N - 1), current_.end());
-                --current_.front();
+                --first_;
+                --last_;
             }
 
             constexpr void advance(difference_type x) requires std::ranges::random_access_range<Base> {
-                for (auto& i : current_) { i += x; }
+                first_ += x;
+                last_ += x;
             }
 
             constexpr bool equal(cursor const& rhs) const
                 requires std::equality_comparable<std::ranges::iterator_t<Base>>{
-                return current_.back() == rhs.current_.back();
+                return last_ == rhs.last_;
             }
 
-            constexpr bool equal(basic_sentinel<V, Const> const& rhs) const
-                requires std::sentinel_for<std::ranges::sentinel_t<Base>, std::ranges::iterator_t<Base>> {
-                return current_.back() == rhs.end_;
+            constexpr bool equal(basic_sentinel<V, Const> const& rhs) const {
+                return last_ == rhs.end_;
             }
 
             constexpr auto distance_to(const cursor& rhs) const
                 requires std::sized_sentinel_for<std::ranges::iterator_t<Base>, std::ranges::iterator_t<Base>> {
-                return rhs.current_.back() - current_.back();
+                return rhs.last_ - last_;
             }
 
             constexpr auto distance_to(const basic_sentinel<V, Const>& rhs) const
                 requires std::sized_sentinel_for<std::ranges::sentinel_t<Base>, std::ranges::iterator_t<Base>> {
-                return rhs.end_ - current_.back();
+                return rhs.end_ - last_;
             }
         };
 
     public:
-        constexpr adjacent_view() = default;
+        constexpr adjacent_view() requires std::default_initializable<V> = default;
         constexpr explicit adjacent_view(V base) : base_(std::move(base)) {}
 
         constexpr auto begin() requires (!tl::simple_view<V>) {
@@ -100,20 +109,20 @@ namespace tl {
             return basic_iterator{ cursor<true>(std::ranges::begin(base_), std::ranges::end(base_)) };
         }
 
-        constexpr auto end() requires (!tl::simple_view<V> && !std::ranges::common_range<V>) {
-            return basic_sentinel<V, false>(std::ranges::end(base_));
-        }
-
-        constexpr auto end() requires (!tl::simple_view<V>&& std::ranges::common_range<V>) {
-            return basic_iterator{ cursor<false>{as_sentinel, std::ranges::begin(base_), std::ranges::end(base_)} };
+        constexpr auto end() requires (!tl::simple_view<V>) {
+            if constexpr (std::ranges::common_range<V>) {
+                return basic_iterator{ cursor<false>{as_sentinel, std::ranges::begin(base_), std::ranges::end(base_)} };
+            } else {
+                return basic_sentinel<V, false>(std::ranges::end(base_));
+            }
         }
 
         constexpr auto end() const requires std::ranges::range<const V> {
-            return basic_sentinel<V, true>(std::ranges::end(base_));
-        }
-
-        constexpr auto end() const requires std::ranges::common_range<const V> {
-            return basic_iterator{ cursor<true>(as_sentinel, std::ranges::begin(base_), std::ranges::end(base_)) };
+            if constexpr (std::ranges::common_range<const V>) {
+                return basic_iterator{ cursor<true>(as_sentinel, std::ranges::begin(base_), std::ranges::end(base_)) };
+            } else {
+                return basic_sentinel<V, true>(std::ranges::end(base_));
+            }
         }
 
         constexpr auto size() requires std::ranges::sized_range<V> {
@@ -134,8 +143,8 @@ namespace tl {
             class adjacent_fn {
             public:
                 template <std::ranges::viewable_range V>
-                constexpr auto operator()(V&& v) const
-                    requires std::ranges::forward_range<V> {
+                    requires std::ranges::forward_range<V>
+                constexpr auto operator()(V&& v) const {
                     return tl::adjacent_view<std::views::all_t<V>, N>{ std::forward<V>(v) };
                 }
             };
