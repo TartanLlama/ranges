@@ -35,6 +35,8 @@ TEST_CASE("longer pipeline") {
       i += 3;
    }
 
+   //MSVC ICEs on this
+#ifndef _MSC_VER
    std::vector<int> small_v{ 0,1,2 };
  
    i = 0;
@@ -42,6 +44,7 @@ TEST_CASE("longer pipeline") {
       REQUIRE(std::get<0>(e) == i);
       ++i;
    }
+#endif
 }
 
 TEST_CASE("size") {
