@@ -666,9 +666,9 @@ namespace tl {
    template <class V, bool Const>
    class basic_sentinel {
       using Base = std::conditional_t<Const, const V, V>;
-      std::ranges::sentinel_t<Base> end_{};
 
    public:
+      std::ranges::sentinel_t<Base> end_{};
       basic_sentinel() = default;
       constexpr explicit basic_sentinel(std::ranges::sentinel_t<Base> end)
          : end_{ std::move(end) } {}
