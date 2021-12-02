@@ -18,11 +18,12 @@ namespace tl {
         class cursor {
             using Base = maybe_const<Const, V>;
             using Diff = std::ranges::range_difference_t<Base>;
+
+        public:
             // invariant: ranges::distance(base_) < N and first_ == last_ == ranges::end(base_), or
             // ranges::distance(base_) >= N and next(first_, N - 1) == last_
             std::ranges::iterator_t<Base> first_{}, last_{};
-
-        public:
+            
             using value_type = tl::meta::repeat_into<std::ranges::range_value_t<Base>, N, detail::tuple_or_pair_impl>::type;
 
             using difference_type = std::ranges::range_difference_t<Base>;
