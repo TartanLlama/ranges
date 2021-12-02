@@ -53,9 +53,15 @@ namespace tl {
          }
 
          template <class... Args>
-         constexpr decltype(auto) operator()(Args&&... args) const
+         constexpr decltype(auto) operator()(Args&&... args)
             requires std::invocable<T&, Args...> {
-            return std::invoke(this->get(), std::forward<Args>(args)...);
+            return std::invoke(this->value(), std::forward<Args>(args)...);
+         }
+
+         template <class... Args>
+         constexpr decltype(auto) operator()(Args&&... args) const
+            requires std::invocable<const T&, Args...> {
+            return std::invoke(this->value(), std::forward<Args>(args)...);
          }
    };
 

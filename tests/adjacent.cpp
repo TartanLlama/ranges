@@ -20,3 +20,19 @@ TEST_CASE("adjacent") {
       REQUIRE(a == b);
    }
 }
+
+
+TEST_CASE("pairwise") {
+   std::vector<int> a{ 0,1,2,3 };
+   std::vector<std::pair<int, int>> results{
+      {0,1},
+      {1,2},
+      {2,3}
+   };
+
+   for (auto [a, b] : tl::views::zip(tl::views::pairwise(a), results)) {
+      REQUIRE(a.first == b.first);
+      REQUIRE(a.second == b.second);
+   }
+}
+

@@ -20,9 +20,9 @@ namespace tl {
 
       constexpr pipeable_fn(F f) : f_(std::move(f)) {}
 
-      template <class V>
-      constexpr auto operator()(V&& v) const requires std::invocable<F,V> {
-         return std::invoke(f_, std::forward<V>(v));
+      template <class... Args>
+      constexpr auto operator()(Args&&... args) const requires std::invocable<F, Args...> {
+         return std::invoke(f_, std::forward<Args>(args)...);
       }
    };
 
