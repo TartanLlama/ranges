@@ -20,9 +20,6 @@ namespace tl {
       V base_;
 
       template <bool Const>
-      class iterator;
-
-      template <bool Const>
       class cursor {
          using Base = std::conditional_t<Const, const V, V>;
          using count_type = decltype([] {
