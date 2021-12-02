@@ -5,8 +5,8 @@
 
 TEST_CASE("generate n") {
    for (auto [i, x] :
-      tl::views::generate_n([x = 0]() mutable { return x++; }, 10)
-      | tl::views::enumerate) {
+      
+      tl::enumerate_view(tl::views::generate_n([x = 0]() mutable { return x++; }, 10))) {
       REQUIRE(i == x);
    }
 }

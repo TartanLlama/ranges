@@ -17,10 +17,10 @@ namespace tl {
 
 		struct cursor {
 		private:
-			static constexpr bool single_pass = true;
 			getlines_view* parent_;
 
 		public:
+			static constexpr bool single_pass = true;
 			cursor() = default;
 
 			explicit cursor(getlines_view* parent) :

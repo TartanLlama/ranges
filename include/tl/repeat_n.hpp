@@ -47,7 +47,7 @@ namespace tl {
             return pos_ == rhs.pos_;
          }
 
-         constexpr bool equal(std::default_sentinel_t rhs) const {
+         constexpr bool equal(std::default_sentinel_t) const {
             return pos_ == 0;
          }
 

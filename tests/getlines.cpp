@@ -2,6 +2,8 @@
 #include <catch2/catch.hpp>
 #include <tl/to.hpp>
 #include <vector>
+#include <sstream>
+
 TEST_CASE("getlines") {
 	std::stringstream ss;
 	ss << R"(hello

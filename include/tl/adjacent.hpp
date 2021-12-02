@@ -17,9 +17,10 @@ namespace tl {
         template<bool Const>
         class cursor {
             using Base = maybe_const<Const, V>;
-            std::array<std::ranges::iterator_t<Base>, N> current_ = std::array<std::ranges::iterator_t<Base>, N>();
 
         public:
+            std::array<std::ranges::iterator_t<Base>, N> current_ = std::array<std::ranges::iterator_t<Base>, N>();
+            
             using value_type = tl::meta::repeat_into<std::ranges::range_value_t<Base>, N, detail::tuple_or_pair_impl>::type;
 
             using difference_type = std::ranges::range_difference_t<Base>;
@@ -142,6 +143,7 @@ namespace tl {
 
         template <std::size_t N>
         inline constexpr auto adjacent = pipeable(detail::adjacent_fn<N>{});
+        inline constexpr auto pairwise = pipeable(detail::adjacent_fn<2>{});
     }  // namespace views
 }  // namespace tl
 

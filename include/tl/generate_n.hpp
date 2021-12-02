@@ -51,16 +51,16 @@ namespace tl {
             return pos_ == rhs.pos_;
          }
 
-         constexpr bool equal(std::default_sentinel_t rhs) const {
+         constexpr bool equal(std::default_sentinel_t) const {
             return pos_ == 0;
          }
 
          constexpr auto distance_to(const cursor& rhs) const {
-            return rhs.pos_ - pos_;
+            return static_cast<std::ptrdiff_t>(rhs.pos_) - static_cast<std::ptrdiff_t>(pos_);
          }
 
-         constexpr auto distance_to(std::default_sentinel_t rhs) const {
-            return pos_;
+         constexpr auto distance_to(std::default_sentinel_t) const {
+            return static_cast<std::ptrdiff_t>(pos_);
          }
       };
 

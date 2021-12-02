@@ -14,8 +14,6 @@ TEST_CASE("adjacent_transform") {
       15
    };
 
-   std::ranges::input_range auto r = tl::views::adjacent_transform<3>(a, [](int i, int j, int k) { return i + j + k; });
-
    for (auto [a, b] : tl::views::zip(tl::views::adjacent_transform<3>(a, [](int i, int j, int k) { return i + j + k; }), results)) {
       REQUIRE(a == b);
    }
