@@ -14,9 +14,6 @@ include(CTest)
 find_program(DPKG_BUILDPACKAGE_FOUND dpkg-buildpackage)
 find_program(RPMBUILD_FOUND rpmbuild)
 
-if (NOT DEFINED CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 20)
-endif()
 
 option(RANGES_BUILD_PACKAGE "Build packages" ON)
 
@@ -99,6 +96,11 @@ if (RANGES_BUILD_TESTS)
     PUBLIC
       Catch2::Catch2
       ranges)
+  if(MSVC)
+  set_target_properties(${PROJECT_NAME}-catch-main PROPERTIES CXX_STANDARD 23)
+  else()
+  set_target_properties(${PROJECT_NAME}-catch-main PROPERTIES CXX_STANDARD 20)
+  endif()
 
   file(GLOB test-sources CONFIGURE_DEPENDS tests/*.cpp)
   foreach (source IN LISTS test-sources)
