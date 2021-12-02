@@ -211,7 +211,7 @@ namespace tl {
          return basic_iterator{ cursor<false>(std::addressof(bases_)) };
       }
       constexpr auto begin() const requires (std::ranges::range<const Vs> && ...) {
-         return basic_iterator{ cursor<true>(as_sentinel, std::addressof(bases_)) };
+         return basic_iterator{ cursor<true>(std::addressof(bases_)) };
       }
 
       constexpr auto end() requires (!(simple_view<Vs> && ...) && am_common<Vs...>) {
