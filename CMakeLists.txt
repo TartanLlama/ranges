@@ -96,11 +96,6 @@ if (RANGES_BUILD_TESTS)
     PUBLIC
       Catch2::Catch2
       ranges)
-  if(MSVC)
-  set_target_properties(${PROJECT_NAME}-catch-main PROPERTIES CXX_STANDARD 23)
-  else()
-  set_target_properties(${PROJECT_NAME}-catch-main PROPERTIES CXX_STANDARD 20)
-  endif()
 
   file(GLOB test-sources CONFIGURE_DEPENDS tests/*.cpp)
   foreach (source IN LISTS test-sources)
@@ -109,6 +104,11 @@ if (RANGES_BUILD_TESTS)
     add_executable(${test}
       "${source}"
       $<TARGET_OBJECTS:${PROJECT_NAME}-catch-main>)
+    if(MSVC)
+        set_target_properties(${test} PROPERTIES CXX_STANDARD 23)
+    else()
+        set_target_properties(${test} PROPERTIES CXX_STANDARD 20)
+    endif()
     target_link_libraries(${test}
       PRIVATE
         ${PROJECT_NAME}-catch-main)
