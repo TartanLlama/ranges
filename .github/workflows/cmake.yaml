@@ -20,8 +20,8 @@ jobs:
       matrix:
         config: 
         - {
-            name: "Windows 2019 MSVC",
-            os: windows-2019,
+            name: "Windows 2022 MSVC",
+            os: windows-2022,
             build_type: "Release", cxx: "cl",
           }  
         - {
