@@ -8,12 +8,6 @@
 #include "common.hpp"
 
 namespace tl {
-   namespace detail {
-      template<class T> using with_reference = T&;
-      template<class T> concept can_reference
-         = requires { typename with_reference<T>; };
-   }
-
    template<std::copy_constructible F, std::ranges::input_range... Views>
    requires (std::ranges::view<Views> && ...) && (sizeof...(Views) > 0) && std::is_object_v<F>&&
       std::regular_invocable<F&, std::ranges::range_reference_t<Views>...>&&
@@ -47,8 +41,8 @@ namespace tl {
          ziperator<Const> inner_ = ziperator<Const>();
 
       public:
-         using value_type = 
-            std::remove_cvref_t<std::invoke_result_t<maybe_const<Const, F>&, 
+         using value_type =
+            std::remove_cvref_t<std::invoke_result_t<maybe_const<Const, F>&,
                                 std::ranges::range_reference_t<maybe_const<Const, Views>>...>>;
 
          constexpr cursor(Parent& parent, ziperator<Const> inner) :

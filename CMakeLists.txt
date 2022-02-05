@@ -103,7 +103,7 @@ if (RANGES_BUILD_TESTS)
     set(test "${PROJECT_NAME}-test-${name}")
     add_executable(${test}
       "${source}"
-      $<TARGET_OBJECTS:${PROJECT_NAME}-catch-main>)
+      $<TARGET_OBJECTS:${PROJECT_NAME}-catch-main> "include/tl/tl.h")
     if(MSVC)
         set_target_properties(${test} PROPERTIES CXX_STANDARD 23)
     else()
