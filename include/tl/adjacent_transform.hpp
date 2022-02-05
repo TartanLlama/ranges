@@ -10,10 +10,6 @@
 
 namespace tl {
    namespace detail {
-      template<class T> using with_reference = T&;
-      template<class T> concept can_reference
-         = requires { typename with_reference<T>; };
-
       template<class F, class... Ts> struct regular_invocable_impl {
          static constexpr bool value = std::regular_invocable<F, Ts...>;
       };
@@ -58,7 +54,7 @@ namespace tl {
       public:
          using value_type =
             std::remove_cvref_t<
-               typename meta::repeat_into<std::ranges::range_reference_t<Base>, N, 
+               typename meta::repeat_into<std::ranges::range_reference_t<Base>, N,
                                     meta::partial<std::invoke_result, maybe_const<Const, F>&>::template apply
                >::type::type>;
 
@@ -122,7 +118,7 @@ namespace tl {
          }
 
          constexpr auto begin() const
-            requires std::ranges::range<const InnerView>&& const_invocable           
+            requires std::ranges::range<const InnerView>&& const_invocable
          {
             return basic_iterator{ cursor<true>(*this, inner_.begin()) };
          }
@@ -181,7 +177,7 @@ namespace tl {
          };
       }  // namespace detail
 
- 
+
       template <std::size_t N>
       inline constexpr auto adjacent_transform = detail::adjacent_transform_fn<N>{};
       inline constexpr auto pairwise_transform = detail::adjacent_transform_fn<2>{};
