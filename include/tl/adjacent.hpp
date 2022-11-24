@@ -24,7 +24,7 @@ namespace tl {
             // ranges::distance(base_) >= N and next(first_, N - 1) == last_
             std::ranges::iterator_t<Base> first_{}, last_{};
             
-            using value_type = tl::meta::repeat_into<std::ranges::range_value_t<Base>, N, detail::tuple_or_pair_impl>::type;
+            using value_type = typename tl::meta::repeat_into<std::ranges::range_value_t<Base>, N, detail::tuple_or_pair_impl>::type;
 
             using difference_type = std::ranges::range_difference_t<Base>;
 

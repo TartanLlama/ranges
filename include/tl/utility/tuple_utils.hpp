@@ -17,7 +17,7 @@ namespace tl {
       struct tuple_or_pair_impl<Fst, Snd> : std::type_identity<std::pair<Fst, Snd>> {};
    }
    template<class... Ts>
-   using tuple_or_pair = detail::tuple_or_pair_impl<Ts...>::type;
+   using tuple_or_pair = typename detail::tuple_or_pair_impl<Ts...>::type;
 
    template <class Tuple>
    constexpr auto min_tuple(Tuple&& tuple) {

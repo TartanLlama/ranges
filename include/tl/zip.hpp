@@ -47,7 +47,7 @@ namespace tl {
 
             constexpr sentinel(sentinel<!Const> i)
                requires Const && (std::convertible_to<std::ranges::sentinel_t<Vs>, std::ranges::sentinel_t<constify<Vs>>> && ...) :
-               end_(std::move(end)) {}
+               end_(std::move(i.end_)) {}
          };
 
          template <bool Const>

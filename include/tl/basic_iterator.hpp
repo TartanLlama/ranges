@@ -61,7 +61,7 @@ namespace tl {
       }
 
       template <class C>
-      using mixin_t = detail::deduced_mixin_t<C>::type;
+      using mixin_t = typename detail::deduced_mixin_t<C>::type;
 
       template <class C>
       requires
@@ -80,7 +80,7 @@ namespace tl {
 
       template <class C>
       requires std::same_as<typename detail::deduced_value_t<C>::type, std::decay_t<typename detail::deduced_value_t<C>::type>>
-         using value_type_t = detail::deduced_value_t<C>::type;
+         using value_type_t = typename detail::deduced_value_t<C>::type;
 
       namespace detail {
          template <class C>
@@ -96,7 +96,7 @@ namespace tl {
       }
 
       template <class C>
-      using difference_type_t = detail::deduced_difference_t<C>::type;
+      using difference_type_t = typename detail::deduced_difference_t<C>::type;
 
       template <class C>
       concept cursor = std::semiregular<std::remove_cv_t<C>>
