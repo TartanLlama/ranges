@@ -4,6 +4,8 @@
 #include <concepts>
 #include <optional>
 #include <iterator>
+#include <ranges>
+#include <functional>
 
 namespace tl {
 	template<class F>
