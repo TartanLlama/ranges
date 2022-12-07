@@ -12,6 +12,8 @@ TEST_CASE("fold") {
     auto r4 = tl::fold_left(a, 1, std::multiplies());
     auto r5 = tl::fold_right(a, 0, std::plus());
     auto r6 = tl::fold_right(a, 1, std::multiplies());
+    auto rs1 = tl::sum(a);
+    auto rs2 = tl::sum(begin(a), end(a));
 
     REQUIRE(r1 == 10);
     REQUIRE(r2 == 24);
@@ -19,6 +21,9 @@ TEST_CASE("fold") {
     REQUIRE(r4 == 24);
     REQUIRE(r5 == 10);
     REQUIRE(r6 == 24);
+    REQUIRE(rs1 == 10);
+    REQUIRE(rs2 == 10);
+
 
     auto r7 = tl::fold(a, 10, std::minus());
     auto r8 = tl::fold_left(a, 10, std::minus());

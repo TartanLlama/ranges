@@ -199,5 +199,14 @@ namespace tl {
 		return fold_right_last(std::ranges::begin(std::forward<R>(r)), std::ranges::end(std::forward<R>(r)), f);
 	}
 
+	template<std::input_iterator I, std::sentinel_for<I> S>
+	constexpr auto sum(I first, S last) {
+		return fold_left_with_iter(std::move(first), last, std::iter_value_t<I>(), std::plus()).value;
+	}
+
+	template<std::ranges::input_range R>
+	constexpr auto sum(R&& r) {
+		return fold_left(std::ranges::begin(std::forward<R>(r)), std::ranges::end(std::forward<R>(r)), std::ranges::range_value_t<R>(), std::plus());
+	}
 }
 #endif
