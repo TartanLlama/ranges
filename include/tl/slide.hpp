@@ -6,6 +6,8 @@
 #include "common.hpp"
 #include "basic_iterator.hpp"
 #include "utility/non_propagating_cache.hpp"
+#include "functional/bind.hpp"
+#include "functional/pipeable.hpp"
 
 namespace tl {
     // Slide view may need to cache either the begin or end iterator
