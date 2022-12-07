@@ -80,7 +80,7 @@ namespace tl {
 
 
                 constexpr cursor(std::ranges::iterator_t<Base> current, std::ranges::range_difference_t<Base> n)
-                    requires !detail::slide_caches_first<Base>
+                    requires (!detail::slide_caches_first<Base>)
                 : cursor_base<Const>(std::move(current), n) {}
 
                 constexpr cursor(std::ranges::iterator_t<Base> current, std::ranges::iterator_t<Base> last_ele, std::ranges::range_difference_t<Base> n)
