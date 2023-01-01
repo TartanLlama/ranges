@@ -22,6 +22,10 @@ namespace tl {
          else
             return std::output_iterator_tag{};
       }
+
+      template<class T> using with_reference = T&;
+      template<class T> concept can_reference
+         = requires { typename with_reference<T>; };
    }
 
    template <class... V>
