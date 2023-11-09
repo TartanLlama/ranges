@@ -65,7 +65,6 @@ TEST_CASE("offset") {
    std::list<int> l {0, 1, 2, 3};
 
    {
-       //
       auto v = tl::stride_view(l, 3);
       auto it = v.begin();
       REQUIRE(*it == 0);
@@ -86,4 +85,30 @@ TEST_CASE("offset") {
       --it;
       REQUIRE(*it == 3);
    }
+}
+
+TEST_CASE("offset") {
+    std::list<int> l{ 0, 1, 2, 3 };
+
+    {
+        auto v = tl::stride_view(l, 3);
+        auto it = v.begin();
+        REQUIRE(*it == 0);
+        ++it;
+        REQUIRE(*it == 3);
+        ++it;
+        --it;
+        REQUIRE(*it == 3);
+    }
+
+    {
+        auto v = tl::stride_view(l | std::views::filter([](auto&&) { return true; }), 3);
+        auto it = v.begin();
+        REQUIRE(*it == 0);
+        ++it;
+        REQUIRE(*it == 3);
+        ++it;
+        --it;
+        REQUIRE(*it == 3);
+    }
 }
