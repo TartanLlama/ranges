@@ -65,6 +65,7 @@ TEST_CASE("offset") {
    std::list<int> l {0, 1, 2, 3};
 
    {
+       //
       auto v = tl::stride_view(l, 3);
       auto it = v.begin();
       REQUIRE(*it == 0);
