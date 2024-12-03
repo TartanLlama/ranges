@@ -73,7 +73,7 @@ namespace tl {
          //TODO noexcept
          constexpr decltype(auto) read() const {
              return[i = inner_.get().first_,this]<std::size_t... Indices>(std::index_sequence<Indices...>) mutable {
-                 return std::invoke(parent_->fun_, ((void)Indices, *i++)...);
+                 return std::apply(parent_->fun_, std::tuple{ ((void)Indices, *i++)... });
              }(std::make_index_sequence<N>{});
          }
 

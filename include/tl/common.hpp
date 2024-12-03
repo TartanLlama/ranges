@@ -38,6 +38,16 @@ namespace tl {
 
    template <bool Const, class T>
    using maybe_const = std::conditional_t<Const, const T, T>;
+
+   template<bool Const, class... Views>
+   concept all_random_access =
+       (std::ranges::random_access_range<maybe_const<Const, Views>> && ...);
+   template<bool Const, class... Views>
+   concept all_bidirectional =
+       (std::ranges::bidirectional_range<maybe_const<Const, Views>> && ...);
+   template<bool Const, class... Views>
+   concept all_forward =
+       (std::ranges::forward_range<maybe_const<Const, Views>> && ...);
 }
 
 #endif

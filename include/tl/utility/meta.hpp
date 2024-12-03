@@ -31,6 +31,9 @@ namespace tl {
       //Repeat the given type T into the template Into N times
       template <class T, std::size_t N, template <class...> class Into>
       using repeat_into = decltype(tl::meta::detail::repeat_into_impl<T,Into>(std::make_index_sequence<N>{}));
+
+      template <class... Ts>
+      using back = typename decltype((std::type_identity<Ts>{}, ...))::type;
    }
 }
 

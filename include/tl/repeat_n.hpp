@@ -80,7 +80,8 @@ namespace tl {
       namespace detail {
          class repeat_n_fn {
          public:
-            template <std::copyable T>
+             template <class T>
+                 requires std::copyable<std::remove_cvref_t<T>>
             constexpr auto operator()(T&& v, std::size_t n) const {
                return tl::repeat_n_view{ std::forward<T>(v), n };
             }

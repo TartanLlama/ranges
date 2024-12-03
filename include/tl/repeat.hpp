@@ -71,7 +71,8 @@ namespace tl {
       namespace detail {
          class repeat_fn {
          public:
-            template <std::copyable T>
+            template <class T>
+                requires std::copyable<std::remove_cvref_t<T>>
             constexpr auto operator()(T&& v) const {
                return tl::repeat_view{ std::forward<T>(v) };
             }
