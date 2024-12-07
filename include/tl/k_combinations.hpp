@@ -40,6 +40,10 @@ namespace tl {
             constexpr explicit cursor(constify<V>* base, std::size_t n, std::ranges::iterator_t<constify<V>> it) :
                 base_(base), current_(n, it) {
             }
+            constexpr explicit cursor(as_sentinel_t, constify<V>* base, std::size_t n) :
+                base_(base), current_(n, std::ranges::begin(*base)) {
+                current_[0] = std::ranges::end(*base);
+            }
 
             //const-converting constructor
             constexpr cursor(cursor<!Const> i) requires Const&& std::convertible_to<
@@ -48,9 +52,9 @@ namespace tl {
                 : base_(i.base_), current_{ std::move(i.current_) } {
             }
 
-            constexpr decltype(auto) read() const {
-                return std::views::transform(current_, [](auto&& i) {
-                    return std::ref(*i);
+            constexpr auto read() const {
+                return std::views::transform(current_, [](auto&& i) -> decltype(auto) {
+                    return *i;
                     });
             }
 
@@ -128,7 +132,7 @@ namespace tl {
 
         constexpr auto end() requires(!tl::simple_view<V>) {
             if constexpr (std::ranges::common_range<V> and std::ranges::sized_range<V>) {
-                return basic_iterator{ cursor<false>(std::addressof(base_), n_, std::ranges::end(base_)) };
+                return basic_iterator{ cursor<false>(as_sentinel, std::addressof(base_), n_) };
             }
             else {
                 return sentinel<false>{std::ranges::end(base_)};
@@ -138,7 +142,7 @@ namespace tl {
         constexpr auto end() const
             requires(std::ranges::range<const V>) {
             if constexpr (std::ranges::common_range<const V> and std::ranges::sized_range<V>) {
-                return basic_iterator{ cursor<true>(std::addressof(base_), n_, std::ranges::end(base_)) };
+                return basic_iterator{ cursor<true>(as_sentinel, std::addressof(base_), n_) };
             }
             else {
                 return sentinel<true>{std::ranges::end(base_)};
