@@ -19,14 +19,14 @@ namespace tl {
 
       class cursor {
          T const* value_;
-         std::size_t pos_ = 0;
+         std::ptrdiff_t pos_ = 0;
 
       public:
          static constexpr bool single_pass = false;
 
          cursor() = default;
          constexpr explicit cursor(T const* value, std::size_t pos)
-            : value_{ value }, pos_{ pos } {}
+            : value_{ value }, pos_( pos ){}
 
          constexpr decltype(auto) read() const {
             return *value_;
@@ -52,7 +52,7 @@ namespace tl {
          }
 
          constexpr auto distance_to(const cursor& rhs) const {
-            return rhs.pos_ - pos_;
+             return rhs.pos_ - pos_;
          }
 
          constexpr auto distance_to(std::default_sentinel_t rhs) const {
