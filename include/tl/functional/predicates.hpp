@@ -2,32 +2,38 @@
 #define TL_RANGES_PREDICATES_HPP
 
 namespace tl {
-    inline constexpr auto equal_to = [](auto&& x) {
+    inline constexpr auto proj = [](auto&& f, auto&& p) {
+        return [f = std::forward<decltype(f)>(f), p = std::forward<decltype(p)>(p)](auto&&... args) {
+            return std::invoke(f, std::invoke(p, std::forward<decltype(args)>(args)...));
+        };
+    };
+
+    inline constexpr auto eq = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return x == y;
         };
     };
-    inline constexpr auto not_equal_to = [](auto&& x) {
+    inline constexpr auto neq = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return x != y;
         };
     };
-    inline constexpr auto less_than = [](auto&& x) {
+    inline constexpr auto lt = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return y < x;
         };
     };
-    inline constexpr auto greater_than = [](auto&& x) {
+    inline constexpr auto gt = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return y > x;
         };
     };
-    inline constexpr auto less_than_or_equal_to = [](auto&& x) {
+    inline constexpr auto lte = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return y <= x;
         };
     };
-    inline constexpr auto greater_than_or_equal_to = [](auto&& x) {
+    inline constexpr auto gte = [](auto&& x) {
         return [x = std::forward<decltype(x)>(x)](auto&& y) {
             return y >= x;
         };
@@ -68,14 +74,14 @@ namespace tl {
     inline constexpr auto is_not_empty = [](auto&& x) {
         return !x.empty();
     };
-    inline constexpr auto conjunction = [](auto&&... predicates) {
+    inline constexpr auto both = [](auto&&... predicates) {
         return [predicates = std::make_tuple(std::forward<decltype(predicates)>(predicates)...)](auto&& x) {
             return std::apply([&x](auto&&... predicates) {
                 return (predicates(x) && ...);
             }, predicates);
         };
     };
-    inline constexpr auto disjunction = [](auto&&... predicates) {
+    inline constexpr auto either = [](auto&&... predicates) {
         return [predicates = std::make_tuple(std::forward<decltype(predicates)>(predicates)...)](auto&& x) {
             return std::apply([&x](auto&&... predicates) {
                 return (predicates(x) || ...);

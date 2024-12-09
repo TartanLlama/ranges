@@ -1,41 +1,41 @@
 #include <catch2/catch.hpp>
 #include "tl/functional/predicates.hpp"
 
-TEST_CASE("equal_to") {
-    auto eq = tl::equal_to(5);
+TEST_CASE("eq") {
+    auto eq = tl::eq(5);
     REQUIRE(eq(5));
     REQUIRE_FALSE(eq(6));
 }
 
-TEST_CASE("not_equal_to") {
-    auto neq = tl::not_equal_to(5);
+TEST_CASE("neq") {
+    auto neq = tl::neq(5);
     REQUIRE_FALSE(neq(5));
     REQUIRE(neq(6));
 }
 
-TEST_CASE("less_than") {
-    auto lt = tl::less_than(5);
+TEST_CASE("lt") {
+    auto lt = tl::lt(5);
     REQUIRE(lt(4));
     REQUIRE_FALSE(lt(5));
     REQUIRE_FALSE(lt(6));
 }
 
-TEST_CASE("greater_than") {
-    auto gt = tl::greater_than(5);
+TEST_CASE("gt") {
+    auto gt = tl::gt(5);
     REQUIRE_FALSE(gt(4));
     REQUIRE_FALSE(gt(5));
     REQUIRE(gt(6));
 }
 
-TEST_CASE("less_than_or_equal_to") {
-    auto lte = tl::less_than_or_equal_to(5);
+TEST_CASE("lte") {
+    auto lte = tl::lte(5);
     REQUIRE(lte(4));
     REQUIRE(lte(5));
     REQUIRE_FALSE(lte(6));
 }
 
-TEST_CASE("greater_than_or_equal_to") {
-    auto gte = tl::greater_than_or_equal_to(5);
+TEST_CASE("gte") {
+    auto gte = tl::gte(5);
     REQUIRE_FALSE(gte(4));
     REQUIRE(gte(5));
     REQUIRE(gte(6));
@@ -121,16 +121,16 @@ TEST_CASE("is_not_null") {
     REQUIRE(inn(&inn));
 }
 
-TEST_CASE("conjunction") {
-    auto c = tl::conjunction(tl::is_even, tl::is_positive);
+TEST_CASE("both") {
+    auto c = tl::both(tl::is_even, tl::is_positive);
     REQUIRE_FALSE(c(0));
     REQUIRE_FALSE(c(1));
     REQUIRE(c(2));
     REQUIRE(c(4));
 }
 
-TEST_CASE("disjunction") {
-    auto d = tl::disjunction(tl::is_even, tl::is_positive);
+TEST_CASE("either") {
+    auto d = tl::either(tl::is_even, tl::is_positive);
     REQUIRE(d(0));
     REQUIRE(d(1));
     REQUIRE(d(2));
@@ -149,3 +149,9 @@ TEST_CASE("negation") {
     REQUIRE_FALSE(n(4));
 }
 
+TEST_CASE("proj") {
+    auto p = tl::proj([](int x) { return x + 1; }, [](int x) { return x + 2; });
+    REQUIRE(p(1) == 4);
+    REQUIRE(p(2) == 5);
+    REQUIRE(p(3) == 6);
+}
