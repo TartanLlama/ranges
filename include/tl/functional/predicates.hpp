@@ -2,7 +2,7 @@
 #define TL_RANGES_PREDICATES_HPP
 
 namespace tl {
-    inline constexpr auto proj = [](auto&& f, auto&& p) {
+    inline constexpr auto compose = [](auto&& f, auto&& p) {
         return [f = std::forward<decltype(f)>(f), p = std::forward<decltype(p)>(p)](auto&&... args) {
             return std::invoke(f, std::invoke(p, std::forward<decltype(args)>(args)...));
         };

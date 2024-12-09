@@ -149,8 +149,8 @@ TEST_CASE("negation") {
     REQUIRE_FALSE(n(4));
 }
 
-TEST_CASE("proj") {
-    auto p = tl::proj([](int x) { return x + 1; }, [](int x) { return x + 2; });
+TEST_CASE("compose") {
+    auto p = tl::compose([](int x) { return x + 1; }, [](int x) { return x + 2; });
     REQUIRE(p(1) == 4);
     REQUIRE(p(2) == 5);
     REQUIRE(p(3) == 6);
